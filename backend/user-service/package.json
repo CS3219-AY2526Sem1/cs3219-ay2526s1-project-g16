@@ -10,6 +10,8 @@
     "dev": "nodemon --config nodemon.json",
     "start": "node src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix && prettier --write .",
     "postinstall": "npx prisma generate"
   },
   "devDependencies": {
