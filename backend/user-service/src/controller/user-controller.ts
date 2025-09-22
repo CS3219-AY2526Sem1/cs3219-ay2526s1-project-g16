@@ -113,9 +113,9 @@ export async function createUser(req: Request, res: Response): Promise<void> {
 export async function getUser(req: Request, res: Response): Promise<void> {
     try {
         // For requests have passed through authenticateJWT middleware, you can access req.user as such:
-        console.log(
-            req.user?.email + ", " + req.user?.username + "," + req.user?.email,
-        );
+        // console.log(
+        //     req.user?.email + ", " + req.user?.username + "," + req.user?.email,
+        // );
         const userId = req.params.id as string;
         const existingUser = await _getUserById(userId);
         if (!existingUser) {
