@@ -32,7 +32,12 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
             }
 
             // generate access token
-            const payload = { sub: existingUser.id };
+            const payload = {
+                sub: existingUser.id,
+                username: existingUser.id,
+                email: existingUser.email,
+                isAdmin: existingUser.isAdmin,
+            };
             const secret = process.env.JWT_SECRET;
             if (!secret) {
                 throw new Error(
@@ -107,6 +112,8 @@ export async function createUser(req: Request, res: Response): Promise<void> {
 
 export async function getUser(req: Request, res: Response): Promise<void> {
     try {
+        // For requests have passed through authenticateJWT middleware, you can access req.user as such:
+        // console.log(req.user?.email + ", " + req.user?.username);
         const userId = req.params.id as string;
         const existingUser = await _getUserById(userId);
         if (!existingUser) {
