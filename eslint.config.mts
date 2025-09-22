@@ -1,10 +1,10 @@
 import js from "@eslint/js";
+import prettierConfig from "eslint-config-prettier";
+import pluginPrettier from "eslint-plugin-prettier";
+import pluginReact from "eslint-plugin-react";
+import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
-import pluginReact from "eslint-plugin-react";
-import pluginPrettier from "eslint-plugin-prettier";
-import prettierConfig from "eslint-config-prettier";
-import { defineConfig } from "eslint/config";
 
 export default defineConfig([
   {
@@ -12,13 +12,13 @@ export default defineConfig([
       "**/node_modules/**",
       "**/dist/**",
       "**/build/**",
-      "**/generated/**"
+      "**/generated/**",
     ],
   },
   {
     files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     plugins: { js },
-    extends: ["js/recommended"],
+    extends: ["js/recommended", "react/jsx-runtime"],
     languageOptions: {
       globals: {
         ...globals.browser,
