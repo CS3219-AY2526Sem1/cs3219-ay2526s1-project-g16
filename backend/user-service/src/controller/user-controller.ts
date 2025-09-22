@@ -34,7 +34,7 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
             // generate access token
             const payload = {
                 sub: existingUser.id,
-                username: existingUser.id,
+                username: existingUser.username,
                 email: existingUser.email,
                 isAdmin: existingUser.isAdmin,
             };
