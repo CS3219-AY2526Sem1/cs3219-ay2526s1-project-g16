@@ -15,3 +15,8 @@
 
 1. Run `npx prisma migrate dev --name [migration name]` when updating the schema of the database to apply changes to the database.
 2. Run `npx prisma generate` to regenerate the type-safe client used to interact with your database in your code.
+
+### Linter and Formatter
+
+1. Run `npm run lint` to view code and formatting errors.
+2. Run `npm run lint:fix` to automatically fix errors. Some errors cannot be automatically fixed.

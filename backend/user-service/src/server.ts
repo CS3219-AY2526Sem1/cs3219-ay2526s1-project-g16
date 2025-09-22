@@ -1,16 +1,30 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import userRoutes from './routes/user-routes.ts';
+import cors from "cors";
+import dotenv from "dotenv";
+import express from "express";
+import userRoutes from "./routes/user-routes.ts";
+import { initConnection } from "./model/user-model.ts";
 
 dotenv.config();
 
 const app = express();
+
+// Use cors to allow any origin to access this app.
+app.use(cors());
+
 app.use(express.json());
+
 const port = process.env.PORT || 3000;
 
-// Tell the application to use the homeRoutes for all requests to the root path
-app.use('/user', userRoutes);
+// Add user routes
+app.use("/user", userRoutes);
 
-app.listen(port, () => {
-  console.log(`User service is running at http://localhost:${port}`);
-});
+initConnection()
+    .then(() => {
+        app.listen(port, () => {
+            console.log(`User service is running at http://localhost:${port}`);
+        });
+    })
+    .catch((err) => {
+        console.error(err);
+        process.exit(1);
+    });
