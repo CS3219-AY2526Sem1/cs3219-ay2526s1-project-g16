@@ -1,12 +1,10 @@
-import express from 'express';
-import { 
+import express from "express";
+import {
     loginUser,
     createUser,
     getUser,
-} from '../controller/user-controller.ts';
-import {
-    authenticateJWT
-} from '../middleware/access-control.ts'
+} from "../controller/user-controller.ts";
+import { authenticateJWT } from "../middleware/access-control.ts";
 
 const router = express.Router();
 
