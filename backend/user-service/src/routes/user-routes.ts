@@ -1,8 +1,8 @@
 import express from "express";
 import {
-    loginUser,
-    createUser,
-    getUser,
+  loginUser,
+  createUser,
+  getUser,
 } from "../controller/user-controller.ts";
 import { authenticateJWT } from "shared-middleware";
 
