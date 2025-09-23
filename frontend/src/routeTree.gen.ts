@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnauthenticatedRouteRouteImport } from './routes/_unauthenticated/route'
+import { Route as UnauthenticatedRegisterRouteImport } from './routes/_unauthenticated/register'
 import { Route as UnauthenticatedLoginRouteImport } from './routes/_unauthenticated/login'
 
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
   getParentRoute: () => rootRouteImport,
+} as any)
+const UnauthenticatedRegisterRoute = UnauthenticatedRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => UnauthenticatedRouteRoute,
 } as any)
 const UnauthenticatedLoginRoute = UnauthenticatedLoginRouteImport.update({
   id: '/login',
@@ -24,21 +30,28 @@ const UnauthenticatedLoginRoute = UnauthenticatedLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/login': typeof UnauthenticatedLoginRoute
+  '/register': typeof UnauthenticatedRegisterRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof UnauthenticatedLoginRoute
+  '/register': typeof UnauthenticatedRegisterRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
   '/_unauthenticated/login': typeof UnauthenticatedLoginRoute
+  '/_unauthenticated/register': typeof UnauthenticatedRegisterRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/login'
+  fullPaths: '/login' | '/register'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login'
-  id: '__root__' | '/_unauthenticated' | '/_unauthenticated/login'
+  to: '/login' | '/register'
+  id:
+    | '__root__'
+    | '/_unauthenticated'
+    | '/_unauthenticated/login'
+    | '/_unauthenticated/register'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -54,6 +67,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UnauthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_unauthenticated/register': {
+      id: '/_unauthenticated/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof UnauthenticatedRegisterRouteImport
+      parentRoute: typeof UnauthenticatedRouteRoute
+    }
     '/_unauthenticated/login': {
       id: '/_unauthenticated/login'
       path: '/login'
@@ -66,10 +86,12 @@ declare module '@tanstack/react-router' {
 
 interface UnauthenticatedRouteRouteChildren {
   UnauthenticatedLoginRoute: typeof UnauthenticatedLoginRoute
+  UnauthenticatedRegisterRoute: typeof UnauthenticatedRegisterRoute
 }
 
 const UnauthenticatedRouteRouteChildren: UnauthenticatedRouteRouteChildren = {
   UnauthenticatedLoginRoute: UnauthenticatedLoginRoute,
+  UnauthenticatedRegisterRoute: UnauthenticatedRegisterRoute,
 }
 
 const UnauthenticatedRouteRouteWithChildren =

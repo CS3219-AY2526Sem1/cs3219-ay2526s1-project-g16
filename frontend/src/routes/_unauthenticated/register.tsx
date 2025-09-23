@@ -11,23 +11,35 @@ import { Separator } from "@/components/ui/separator";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 
-export const Route = createFileRoute("/_unauthenticated/login")({
+export const Route = createFileRoute("/_unauthenticated/register")({
   component: Login,
 });
 
 function Login() {
   const form = useForm();
   return (
-    <div className="flex flex-col gap-5 w-80">
+    <div className="flex flex-col w-80 gap-5">
       <Form {...form}>
         <FormField
           control={form.control}
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Username or Email Address</FormLabel>
+              <FormLabel>Email Address</FormLabel>
               <FormControl>
-                <Input placeholder="Username or Email" {...field} />
+                <Input placeholder="Email" {...field} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Input placeholder="Username" {...field} />
               </FormControl>
             </FormItem>
           )}
@@ -44,15 +56,27 @@ function Login() {
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confirm Password</FormLabel>
+              <FormControl>
+                <Input placeholder="Password" type="password" {...field} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
-        <Button>Login</Button>
+        <Button>Register</Button>
 
         <Separator />
 
         <span className="self-center">
-          {"New to PeerPrep? "}
-          <Link to="/register" className="text-blue-500">
-            Create an account.
+          {"Have an account? "}
+          <Link to="/login" className="text-blue-500">
+            Login.
           </Link>
         </span>
       </Form>
