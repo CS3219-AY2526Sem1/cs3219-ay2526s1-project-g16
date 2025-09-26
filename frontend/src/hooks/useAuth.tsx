@@ -23,10 +23,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!token) return;
 
       try {
-        const userInfo = await fetch(
-          `${USER_SERVICE_URL}/user/validate-token`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
+        const userInfo = await fetch(`${USER_SERVICE_URL}/user`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         const data: User = await userInfo.json();
         setUser(data);
         setIsAuthenticated(true);
