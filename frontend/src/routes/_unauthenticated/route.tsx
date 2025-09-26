@@ -8,8 +8,8 @@ function App() {
   return (
     <>
       <header>unauthenticated header</header>
-      <div className="w-full h-full flex flex-col items-center mt-24 gap-12">
-        <img src="logo.png" width={128} height={128} />
+      <div className="w-full h-full flex flex-col items-center mt-20 gap-10">
+        <img src="logo.png" width={100} height={100} />
         <Outlet />
       </div>
     </>
