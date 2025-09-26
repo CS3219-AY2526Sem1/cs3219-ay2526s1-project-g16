@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { LoaderCircle } from "lucide-react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -19,25 +21,48 @@ export const Route = createFileRoute("/_unauthenticated/login")({
     redirect: search?.redirect?.toString(),
   }),
   beforeLoad: ({ context, search }) => {
-    if (context.auth.isAuthenticated && search.redirect != null) {
-      throw redirect({ to: search.redirect });
+    if (context.auth.isAuthenticated) {
+      throw redirect({ to: search.redirect ?? "/" });
     }
   },
   component: Login,
 });
 
 function Login() {
+  const { redirect } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const { auth } = Route.useRouteContext();
+  const { login } = auth;
+  const [isLoading, setIsLoading] = useState(false);
+
   const loginSchema = z.object({
-    usernameOrEmail: z.union([z.email("Invalid email address"), z.string()]),
-    password: z.string("Password is required"),
+    usernameOrEmail: z.union([
+      z.string().min(1, "Username is required"),
+      z.email("Invalid email address"),
+    ]),
+    password: z.string("Password is required").min(1, "Password is required"),
   });
 
   const form = useForm<z.infer<typeof loginSchema>>({
+    defaultValues: {
+      usernameOrEmail: "",
+      password: "",
+    },
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = (data: z.infer<typeof loginSchema>) => {
-    console.log(data);
+  const onSubmit = async (data: z.infer<typeof loginSchema>) => {
+    setIsLoading(true);
+    try {
+      await login(data.usernameOrEmail, data.password);
+      if (redirect != null) {
+        navigate({ to: redirect, search: { redirect: undefined } });
+      }
+    } catch (error) {
+      form.setError("root", { message: (error as Error).message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -73,7 +98,19 @@ function Login() {
               </FormItem>
             )}
           />
-          <Button>Login</Button>
+
+          {form.formState.errors.root && (
+            <div className="text-red-500 text-sm text-center -my-2">
+              {form.formState.errors.root.message}
+            </div>
+          )}
+
+          <Button disabled={isLoading}>
+            <>
+              Login
+              {isLoading && <LoaderCircle className="animate-spin" />}
+            </>
+          </Button>
         </form>
 
         <Separator />

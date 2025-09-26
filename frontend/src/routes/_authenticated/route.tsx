@@ -15,5 +15,10 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function Authenticated() {
-  return <Outlet />;
+  return (
+    <>
+      <header>authenticated header</header>
+      <Outlet />
+    </>
+  );
 }
