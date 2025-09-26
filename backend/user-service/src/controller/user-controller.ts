@@ -116,8 +116,11 @@ export async function getUser(req: Request, res: Response): Promise<void> {
     // console.log(
     //     req.user?.email + ", " + req.user?.username + "," + req.user?.email,
     // );
-    const userId = req.params.id as string;
-    const existingUser = await _getUserById(userId);
+    let userId = req.params.id;
+    if (!userId) {
+        userId = req.user?.id;
+    }
+    const existingUser = await _getUserById(userId as string);
     if (!existingUser) {
       res.status(404).json({ error: `User ${userId} not found` });
       return;
