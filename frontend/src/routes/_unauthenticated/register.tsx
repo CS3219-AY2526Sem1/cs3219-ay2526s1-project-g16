@@ -75,7 +75,11 @@ function Login() {
 
         <span className="self-center">
           {"Have an account? "}
-          <Link to="/login" className="text-blue-500">
+          <Link
+            to="/login"
+            className="text-blue-500"
+            search={{ redirect: undefined }} // Redirect to home after login
+          >
             Login.
           </Link>
         </span>

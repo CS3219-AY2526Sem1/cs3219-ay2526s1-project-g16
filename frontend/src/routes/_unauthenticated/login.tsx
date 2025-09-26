@@ -8,10 +8,18 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 
 export const Route = createFileRoute("/_unauthenticated/login")({
+  validateSearch: (search) => ({
+    redirect: search?.redirect?.toString(),
+  }),
+  beforeLoad: ({ context, search }) => {
+    if (context.auth.isAuthenticated && search.redirect != null) {
+      throw redirect({ to: search.redirect });
+    }
+  },
   component: Login,
 });
 
