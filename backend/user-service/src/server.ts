@@ -19,12 +19,12 @@ const port = process.env.PORT || 3000;
 app.use("/user", userRoutes);
 
 initConnection()
-    .then(() => {
-        app.listen(port, () => {
-            console.log(`User service is running at http://localhost:${port}`);
-        });
-    })
-    .catch((err) => {
-        console.error(err);
-        process.exit(1);
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`User service is running at http://localhost:${port}`);
     });
+  })
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
