@@ -14,4 +14,6 @@ router.post("/login", loginUser);
 
 router.get("/:id", authenticateJWT, getUser);
 
+router.get("/", authenticateJWT, getUser);
+
 export default router;
