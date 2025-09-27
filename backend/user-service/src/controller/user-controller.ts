@@ -46,7 +46,8 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
       }
       const accessToken = jwt.sign(payload, secret, { expiresIn: "1d" });
       res.status(200).json({
-        data: { accessToken, ...formatUserResponse(existingUser) },
+        accessToken,
+        ...formatUserResponse(existingUser),
       });
       return;
     } catch {
@@ -118,14 +119,14 @@ export async function getUser(req: Request, res: Response): Promise<void> {
     // );
     let userId = req.params.id;
     if (!userId) {
-        userId = req.user?.id;
+      userId = req.user?.id;
     }
     const existingUser = await _getUserById(userId as string);
     if (!existingUser) {
       res.status(404).json({ error: `User ${userId} not found` });
       return;
     }
-    res.status(200).json({ data: formatUserResponse(existingUser) });
+    res.status(200).json(formatUserResponse(existingUser));
     return;
   } catch {
     res.status(500).json({ error: "Internal Server Error" });
