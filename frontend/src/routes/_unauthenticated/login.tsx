@@ -55,9 +55,7 @@ function Login() {
     setIsLoading(true);
     try {
       await login(data.usernameOrEmail, data.password);
-      if (redirect != null) {
-        navigate({ to: redirect, search: { redirect: undefined } });
-      }
+      navigate({ to: redirect ?? "/", search: { redirect: undefined } });
     } catch (error) {
       form.setError("root", { message: (error as Error).message });
     } finally {
