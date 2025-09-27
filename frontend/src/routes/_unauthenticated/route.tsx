@@ -8,9 +8,13 @@ function App() {
   return (
     <>
       <header>unauthenticated header</header>
-      <div className="w-full h-full flex flex-col items-center mt-20 gap-10">
-        <img src="logo.png" width={100} height={100} />
-        <Outlet />
+      <div className="h-full flex flex-col">
+        <div className="flex flex-col items-center justify-center grow-2 gap-10">
+          <img src="logo.png" width={100} height={100} />
+          <Outlet />
+        </div>
+        {/* Spacer to push content towards the top */}
+        <div className="grow-1" />
       </div>
     </>
   );
