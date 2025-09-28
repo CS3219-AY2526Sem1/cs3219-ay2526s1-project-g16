@@ -12,6 +12,7 @@ import {
   addRefreshToken as _addRefreshToken,
   isRefreshToken as _isRefreshToken,
   removeRefreshToken as _removeRefreshToken,
+  getRefreshToken as _getRefreshToken,
 } from "../model/refresh-token.ts";
 import {
   generateAccessToken,
@@ -195,7 +196,8 @@ export async function refreshAccessToken(
     }
 
     // Check if refresh token is stored
-    if (!(await _isRefreshToken(refreshToken))) {
+    const existingRefreshToken = await _getRefreshToken(refreshToken);
+    if (!existingRefreshToken || existingRefreshToken.expiresAt < new Date()) {
       res.status(403).json({ message: "Invalid refresh token" });
       return;
     }
