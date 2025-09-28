@@ -76,7 +76,7 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
 
     if (candidates.length > 0) {
       const partner = candidates[0];
-      const roomId = `room_${nanoid(16)}`;
+      const roomId = getRoomId();
 
       await tx.matchTicket.upsert({
         where: { userId },
@@ -165,4 +165,10 @@ export async function cancel(userId: string): Promise<MatchResult> {
     data: { status: MATCH_STATUS.CANCELLED },
   });
   return { status: "cancelled" };
+}
+
+// Private Functions
+// May change in the future depending
+function getRoomId(): string {
+  return `room_${nanoid(16)}`;
 }
