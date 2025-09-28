@@ -6,8 +6,25 @@ import {
   getUserByEmail as _getUserByEmail,
   getUserById as _getUserById,
   getUserByUsername as _getUserByUsername,
-} from "../model/user-model.ts";
+} from "../model/user.ts";
 import type { User } from "../generated/prisma/index.js";
+import {
+  addRefreshToken as _addRefreshToken,
+  isRefreshToken as _isRefreshToken,
+  removeRefreshToken as _removeRefreshToken,
+} from "../model/refresh-token.ts";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  updateCookieAccessToken,
+  updateCookieRefreshToken,
+  REFRESH_TOKEN_MAX_AGE,
+  formatUserResponse,
+} from "./controller-utils.ts";
+import type { MyJwtPayload } from "shared-middleware";
+
+const ACCESS_SECRET = process.env.ACCESS_JWT_SECRET || "access-secret";
+const REFRESH_SECRET = process.env.REFRESH_JWT_SECRET || "refresh-secret";
 
 export async function loginUser(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body;
@@ -15,7 +32,7 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
   if (email && password) {
     try {
       // Check if user exists
-      const existingUser = await _getUserByEmail(email);
+      const existingUser: User | null = await _getUserByEmail(email);
       if (!existingUser) {
         res.status(401).json({ error: "Invalid email address." });
         return;
@@ -31,27 +48,31 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
         return;
       }
 
-      // generate access token
-      const payload = {
-        sub: existingUser.id,
-        username: existingUser.username,
-        email: existingUser.email,
-        isAdmin: existingUser.isAdmin,
-      };
-      const secret = process.env.JWT_SECRET;
-      if (!secret) {
-        throw new Error(
-          "JWT_SECRET is not defined in the environment variables",
-        );
-      }
-      const accessToken = jwt.sign(payload, secret, { expiresIn: "1d" });
-      res.status(200).json({
-        accessToken,
-        ...formatUserResponse(existingUser),
-      });
+      // generate access token and refresh token
+      const accessToken = generateAccessToken(
+        existingUser.id,
+        existingUser.username,
+        existingUser.email,
+        existingUser.isAdmin,
+        ACCESS_SECRET,
+      );
+      const refreshToken = generateRefreshToken(
+        existingUser.id,
+        existingUser.username,
+        existingUser.email,
+        existingUser.isAdmin,
+        REFRESH_SECRET,
+      );
+      await _addRefreshToken(
+        refreshToken,
+        new Date(Date.now() + REFRESH_TOKEN_MAX_AGE),
+      );
+      await updateCookieAccessToken(res, accessToken);
+      await updateCookieRefreshToken(res, refreshToken);
+      res.status(200).json(formatUserResponse(existingUser));
       return;
-    } catch {
-      res.status(500).json({ error: "Internal server error." });
+    } catch (err) {
+      res.status(500).json({ error: "Internal server error." + err });
     }
   } else {
     res.status(400).json({ error: "Missing email or password." });
@@ -134,13 +155,71 @@ export async function getUser(req: Request, res: Response): Promise<void> {
   }
 }
 
-export function formatUserResponse(user: User) {
-  return {
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    isAdmin: user.isAdmin,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  };
+export async function logout(req: Request, res: Response): Promise<void> {
+  try {
+    if (await _removeRefreshToken(req.cookies.jwt_refresh_token)) {
+      updateCookieAccessToken(res, "");
+      updateCookieRefreshToken(res, "");
+      res.status(200).json({ message: "User logged out" });
+      return;
+    }
+    res.status(500).json({
+      message:
+        "Could not logout user. The user's refresh token does not exist.",
+    });
+    return;
+  } catch (err) {
+    res.status(500).json({ message: "Could not logout user" + err });
+    return;
+  }
+}
+
+export async function refreshAccessToken(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const refreshToken = req.cookies?.jwt_refresh_token;
+    if (!refreshToken) {
+      res.status(401).json({ message: "Refresh token missing" });
+      return;
+    }
+
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, REFRESH_SECRET) as MyJwtPayload;
+
+    const existingUser = await _getUserByUsername(decoded.username);
+    if (!existingUser) {
+      res.status(401).json({ message: "Refresh does not match user" });
+      return;
+    }
+
+    // Check if refresh token is stored
+    if (!(await _isRefreshToken(refreshToken))) {
+      res.status(403).json({ message: "Invalid refresh token" });
+      return;
+    }
+
+    // Generate new access token
+    const accessToken = generateAccessToken(
+      existingUser.id,
+      existingUser.username,
+      existingUser.email,
+      existingUser.isAdmin,
+      ACCESS_SECRET,
+    );
+    await updateCookieAccessToken(res, accessToken);
+    res.status(200).json({ message: "Access token refreshed" });
+    return;
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      res.status(401).json({ message: "Refresh token expired" });
+      return;
+    }
+    if (error instanceof jwt.JsonWebTokenError) {
+      res.status(401).json({ message: "Invalid Refresh token" });
+      return;
+    }
+    res.status(500).json({ message: "Internal server error" });
+  }
 }
