@@ -1,0 +1,35 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["match"] // Only look at tables in the "auth" namespace
+}
+
+model MatchTicket {
+  id          String      @id @default(cuid())
+  userId      String      @unique
+  language    String
+  difficulty  String
+  topic       String
+  status      String
+  partnerId   String?     // nullable until matched
+  roomId      String?     // nullable until matched; NOT unique
+  expiresAt   DateTime
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([language, difficulty, topic, status, createdAt])
+  @@index([roomId])       // helpful for “who’s in this room?”
+  @@map("matchticket")
+  @@schema("match")
+}
