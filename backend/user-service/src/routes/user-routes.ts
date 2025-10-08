@@ -5,6 +5,7 @@ import {
   getUser,
   refreshAccessToken,
   logout,
+  updateUser,
 } from "../controller/user-controller.ts";
 import { authenticateJWT } from "shared-middleware";
 
@@ -21,5 +22,7 @@ router.get("/", authenticateJWT, getUser);
 router.post("/refresh", refreshAccessToken);
 
 router.post("/logout", logout);
+
+router.post("/update/:id", authenticateJWT, updateUser);
 
 export default router;
