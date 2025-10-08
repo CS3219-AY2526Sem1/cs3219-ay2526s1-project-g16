@@ -20,7 +20,9 @@ export const isRefreshToken = async (token: string): Promise<boolean> => {
   return !!refreshToken;
 };
 
-export const getRefreshToken = async (token: string): Promise<RefreshToken | null> => {
+export const getRefreshToken = async (
+  token: string,
+): Promise<RefreshToken | null> => {
   return await prisma.refreshToken.findUnique({
     where: { token },
   });
