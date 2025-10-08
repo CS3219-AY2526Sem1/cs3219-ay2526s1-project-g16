@@ -27,3 +27,12 @@ model User {
   @@map("users")      // maps to "auth.users"
   @@schema("auth")    // Schema name is "auth"
 }
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  token       String   @unique
+  expiresAt   DateTime
+
+  @@map("refresh_tokens")
+  @@schema("auth")
+}

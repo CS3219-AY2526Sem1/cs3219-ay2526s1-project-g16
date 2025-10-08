@@ -1,22 +1,18 @@
 import jwt from "jsonwebtoken";
+const { TokenExpiredError } = jwt;
 export * from "./express.js";
 export async function authenticateJWT(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Unauthorized: No token provided" });
-    return;
-  }
-  const access_token = authHeader.split(" ")[1];
-  if (!access_token) {
-    res.status(401).json({ error: "Unauthorized: No token provided" });
+  const accessToken = req.cookies?.jwt_access_token;
+  if (!accessToken) {
+    res.status(401).json({ error: "Unauthorized: No access token provided" });
     return;
   }
   try {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      throw new Error("JWT_SECRET is not defined in the environment variables");
+    const accessSecret = process.env.ACCESS_JWT_SECRET;
+    if (!accessSecret) {
+      throw new Error("ACCESS_JWT_SECRET is not defined");
     }
-    const decoded = jwt.verify(access_token, secret);
+    const decoded = jwt.verify(accessToken, accessSecret);
     // Add user info to request object
     req.user = {
       id: decoded.sub,
@@ -25,9 +21,15 @@ export async function authenticateJWT(req, res, next) {
       isAdmin: decoded.isAdmin,
     };
     next(); // Proceed to next middleware or route handler
-  } catch {
+  } catch (err) {
+    if (err instanceof TokenExpiredError) {
+      res.status(401).json({
+        error: "Unauthorized: Expired access token",
+      });
+      return;
+    }
     res.status(401).json({
-      error: "Unauthorized: Invalid or expired token",
+      error: "Unauthorized: Invalid token" + err,
     });
     return;
   }
