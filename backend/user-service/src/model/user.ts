@@ -38,7 +38,7 @@ export const getUserById = async (id: string): Promise<User | null> => {
 
 export const updateUser = async (
   userId: string,
-  updates: Partial<Prisma.UserUpdateInput>
+  updates: Partial<Prisma.UserUpdateInput>,
 ): Promise<User> => {
   return await prisma.user.update({
     where: { id: userId },
