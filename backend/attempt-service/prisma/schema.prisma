@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["attempt-hist"]
+}
+
+model attempt {
+  id             String   @id @default(uuid())
+  username       String
+  matchUsername  String
+  question       String
+  questionTags   String[]
+  difficulty     String
+  code           String
+  createdAt      DateTime @default(now())
+
+  @@map("attempt")
+  @@schema("attempt-hist")
+}
