@@ -67,7 +67,7 @@ function Login() {
     <div className="flex flex-col gap-5">
       <Form {...form}>
         <form
-          className="flex flex-col gap-5 w-80"
+          className="flex w-80 flex-col gap-5"
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <FormField
@@ -98,7 +98,7 @@ function Login() {
           />
 
           {form.formState.errors.root && (
-            <div className="text-red-500 text-sm text-center -my-2">
+            <div className="-my-2 text-center text-sm text-red-500">
               {form.formState.errors.root.message}
             </div>
           )}

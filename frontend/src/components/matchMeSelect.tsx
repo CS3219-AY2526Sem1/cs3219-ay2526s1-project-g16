@@ -28,7 +28,7 @@ export function MatchMeSelect({
     <Select value={item} onValueChange={(newValue) => setItem(newValue)}>
       <SelectTrigger
         className={cn(
-          "relative text-3xl border-0 border-b-neutral-200 shadow-none px-0 mx-2 focus-visible:ring-0 transition-colors before:absolute before:-inset-1 before:-mx-1 before:outline-solid before:outline-transparent hover:before:outline-neutral-300/50 before:transition-colors before:rounded-lg hover:before:bg-neutral-100/50 before:-z-10 data-[state=open]:before:bg-neutral-100/50 data-[state=open]:before:outline-neutral-300/80",
+          "before:outline-solid relative mx-2 border-0 border-b-neutral-200 px-0 text-3xl shadow-none transition-colors before:absolute before:-inset-1 before:-z-10 before:-mx-1 before:rounded-lg before:outline-transparent before:transition-colors hover:before:bg-neutral-100/50 hover:before:outline-neutral-300/50 focus-visible:ring-0 data-[state=open]:before:bg-neutral-100/50 data-[state=open]:before:outline-neutral-300/80",
           triggerClassName,
         )}
       >
@@ -40,7 +40,7 @@ export function MatchMeSelect({
             key={i}
             value={value}
             className={cn(
-              "text-3xl data-[state=checked]:bg-popover/70 focus:!bg-popover transition-colors",
+              "data-[state=checked]:bg-popover/70 focus:!bg-popover text-3xl transition-colors",
               itemClassName,
             )}
           >
@@ -68,7 +68,7 @@ export function MultiMatchMeSelect({
   setItems: React.Dispatch<React.SetStateAction<string[]>>;
 }) {
   return (
-    <div className="relative flex flex-wrap gap-y-2 mr-10">
+    <div className="relative mr-10 flex flex-wrap gap-y-2">
       {items.map((value, i) => (
         <div
           className={cn("relative", {
@@ -86,7 +86,7 @@ export function MultiMatchMeSelect({
           >
             <SelectTrigger
               className={cn(
-                "relative text-3xl border-0 border-b-neutral-200 shadow-none px-0 mx-2 focus-visible:ring-0 transition-colors before:absolute before:-inset-1 before:-mx-1 before:outline-solid before:outline-transparent hover:before:outline-neutral-300/50 before:transition-colors before:rounded-lg hover:before:bg-neutral-100/50 before:-z-10 data-[state=open]:before:bg-neutral-100/50 data-[state=open]:before:outline-neutral-300/80",
+                "before:outline-solid relative mx-2 border-0 border-b-neutral-200 px-0 text-3xl shadow-none transition-colors before:absolute before:-inset-1 before:-z-10 before:-mx-1 before:rounded-lg before:outline-transparent before:transition-colors hover:before:bg-neutral-100/50 hover:before:outline-neutral-300/50 focus-visible:ring-0 data-[state=open]:before:bg-neutral-100/50 data-[state=open]:before:outline-neutral-300/80",
                 { "animate-in fade-in slide-in-from-left-6": i !== 0 },
                 triggerClassName,
               )}
@@ -99,7 +99,7 @@ export function MultiMatchMeSelect({
                   key={i}
                   value={value}
                   className={cn(
-                    "text-3xl data-[state=checked]:bg-popover/70 focus:!bg-popover transition-colors",
+                    "data-[state=checked]:bg-popover/70 focus:!bg-popover text-3xl transition-colors",
                     itemClassName,
                   )}
                 >
@@ -109,7 +109,7 @@ export function MultiMatchMeSelect({
             </SelectContent>
           </Select>
           <CircleX
-            className="text-red-500 absolute -top-3 -right-3 bg-white rounded-full opacity-0 transition-opacity"
+            className="absolute -right-3 -top-3 rounded-full bg-white text-red-500 opacity-0 transition-opacity"
             onClick={() =>
               setItems((prev) =>
                 prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev,

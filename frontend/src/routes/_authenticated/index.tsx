@@ -12,9 +12,9 @@ function Home() {
   const [languages, setLanguages] = useState<string[]>([""]);
 
   return (
-    <main className="w-full flex flex-col items-center justify-center mt-24 gap-8">
+    <main className="mt-24 flex w-full flex-col items-center justify-center gap-8">
       <h1 className="text-7xl font-semibold">Match Me</h1>
-      <div className="grid grid-cols-2 text-3xl gap-x-2 gap-y-2 mr-4">
+      <div className="mr-4 grid grid-cols-2 gap-x-2 gap-y-2 text-3xl">
         <span className="text-right">I want to do</span>
         <MultiMatchMeSelect
           placeholder="Question Type"

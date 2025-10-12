@@ -49,7 +49,7 @@ function Register() {
     <div className="flex flex-col gap-4">
       <Form {...form}>
         <form
-          className="flex flex-col gap-4 w-80"
+          className="flex w-80 flex-col gap-4"
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <FormField

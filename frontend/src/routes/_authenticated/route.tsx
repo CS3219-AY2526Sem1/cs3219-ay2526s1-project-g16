@@ -24,7 +24,7 @@ function Authenticated() {
   const { user } = auth;
   return (
     <>
-      <header className="p-4 border-b flex items-center gap-2">
+      <header className="flex items-center gap-2 border-b p-4">
         <Link to="/">
           <img src="logo_wordless.png" width={48} height={48} />
         </Link>

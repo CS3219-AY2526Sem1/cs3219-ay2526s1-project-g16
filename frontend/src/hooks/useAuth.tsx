@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // this is necessary so that the authenticated routes check AFTER we have checked for existing token
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-screen items-center justify-center">
         <LoaderCircle className="animate-spin text-gray-600" size={48} />
       </div>
     );
