@@ -29,6 +29,7 @@ initConnection()
         });
     })
     .catch((err) => {
+        console.log("nope");
         console.error(err);
         process.exit(1);
     });
