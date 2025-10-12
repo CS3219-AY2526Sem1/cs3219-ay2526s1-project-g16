@@ -1,10 +1,10 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_unauthenticated")({
-  component: App,
+  component: Unauthenticated,
 });
 
-function App() {
+function Unauthenticated() {
   return (
     <>
       <header>unauthenticated header</header>
