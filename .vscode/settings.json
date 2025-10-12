@@ -7,5 +7,10 @@
   },
   "files.readonlyInclude": {
     "**/routeTree.gen.ts": true
-  }
+  },
+  "tailwindCSS.classAttributes": [
+    "class",
+    "className",
+    ".*ClassName.*"
+  ],
 }
