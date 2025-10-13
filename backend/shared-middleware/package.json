@@ -1,0 +1,26 @@
+{
+  "name": "shared-middleware",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/access-control.js",
+  "types": "dist/access-control.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix && prettier --write ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "typescript": "^5.9.2"
+  }
+}
