@@ -10,12 +10,7 @@ const strOrArray = z
 export const ticketSchema = z.object({
   userId: z.string().min(1),
 
-  // single-choice identity fields
-  language: z.string().min(1).transform((s) => s.toLowerCase()),
-  difficulty: z.string().min(1).transform((s) => s.toLowerCase()),
-  topic: z.string().min(1).transform((s) => s.toLowerCase()),
-
-  // optional acceptable sets
+  // optional acceptable sets (empty/omitted = wildcard)
   languageIn: strOrArray,
   difficultyIn: strOrArray,
   topicIn: strOrArray,

@@ -6,34 +6,26 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["match"]
+  schemas  = ["matchservice"]
 }
 
 model MatchTicket {
-  id          String      @id @default(cuid())
-  userId      String      @unique
+  id     String  @id @default(cuid())
+  userId String  @unique
 
-  // The user’s concrete identity for this ticket (always single values, lowercase in app code)
-  language    String
-  difficulty  String
-  topic       String
+  languagePref   String[] @default([])
+  difficultyPref String[] @default([])
+  topicPref      String[] @default([])
 
-  // Optional preference sets (what the user will accept). Store lowercased values.
-  languagePref   String[]
-  difficultyPref String[]
-  topicPref      String[]
+  status    String
+  partnerId String?
+  roomId    String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  status      String
-  partnerId   String?     // nullable until matched
-  roomId      String?     // nullable until matched; NOT unique (two users can share same roomId)
-  expiresAt   DateTime
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  // Helpful indexes for matching & lookups
-  @@index([language, difficulty, topic, status, createdAt])
   @@index([status, expiresAt, createdAt])
-  @@index([roomId])       // “who’s in this room?”
+  @@index([roomId])
   @@map("matchticket")
-  @@schema("match")
+  @@schema("matchservice")
 }

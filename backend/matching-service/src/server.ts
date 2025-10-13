@@ -8,14 +8,12 @@ dotenv.config();
 
 const app = express();
 
-// CORS (tighten as needed)
 app.use(cors());
 
 app.use(express.json());
 
 const port = Number(process.env.PORT) || 3000;
 
-// // Mount match routes at /match
 app.use("/match", matchRoutes);
 
 app.get("/", (_req, res) => {
