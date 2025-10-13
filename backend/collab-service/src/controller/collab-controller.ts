@@ -14,6 +14,9 @@ export async function createSession(req: Request, res: Response) {
     if (!topic || !difficulty) {
       return res.status(400).json({ error: "topic and difficulty are required" });
     }
+    // query from alicia
+
+    // set up actual collab service
     const session = await _createSession(
       roomId,
       topic, 
@@ -23,9 +26,12 @@ export async function createSession(req: Request, res: Response) {
     );
     return res.status(201).json({ data: session });
   } catch (e) {
+    console.error("Error creating session:", e); 
+
     return res.status(500).json({ error: "Internal server error" });
   }
 }
+
 
 // POST /collab/sessions/:id/end 
 export async function endSession(req: Request, res: Response) {

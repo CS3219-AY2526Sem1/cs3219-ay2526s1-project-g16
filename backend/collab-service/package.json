@@ -26,12 +26,14 @@
     "@types/nanoid": "^2.1.0",
     "@types/node": "^24.5.2",
     "@types/pino": "^7.0.4",
+    "@types/ws": "^8.18.1",
     "prisma": "^6.16.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
+    "@y/websocket-server": "^0.1.1",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
@@ -40,6 +42,7 @@
     "cors": "^2.8.5",
     "dayjs": "^1.11.18",
     "express": "^5.1.0",
+    "http-proxy": "^1.18.1",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "nanoid": "^5.1.5",
@@ -48,6 +51,9 @@
     "pino-pretty": "^13.1.1",
     "reflect-metadata": "^0.2.2",
     "shared-middleware": "file:../shared-middleware",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.3",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.27"
   }
 }
