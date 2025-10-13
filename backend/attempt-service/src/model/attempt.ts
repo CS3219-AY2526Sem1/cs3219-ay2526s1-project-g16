@@ -2,14 +2,14 @@ import { prisma } from "./prisma-client.ts";
 import type { attempt } from "../generated/prisma/index.js";
 
 export async function addAttempt(
-  username: string,
+  userId: string,
   matchUsername: string,
   question: number,
   code: string,
 ): Promise<attempt> {
   const newAttempt = await prisma.attempt.create({
     data: {
-      username,
+      userId,
       matchUsername,
       question,
       code,
@@ -19,13 +19,13 @@ export async function addAttempt(
   return newAttempt;
 }
 
-export async function getAttemptsByUsername(
-  username: string,
+export async function getAttemptsByUserId(
+  userId: string,
   page: number = 0, // 1-based page number
   pageSize: number = 10, // records per page
 ): Promise<attempt[]> {
   const attempts = await prisma.attempt.findMany({
-    where: { username },
+    where: { userId },
     orderBy: { createdAt: "desc" },
     skip: page * pageSize,
     take: pageSize,
@@ -34,12 +34,12 @@ export async function getAttemptsByUsername(
   return attempts;
 }
 
-export async function getUniqueQuestionsByUsername(
-  username: string,
+export async function getUniqueQuestionsByUserId(
+  userId: string,
 ): Promise<number[]> {
   const uniqueQuestions = await prisma.attempt.findMany({
     where: {
-      username,
+      userId,
     },
     distinct: ["question"],
     select: {
