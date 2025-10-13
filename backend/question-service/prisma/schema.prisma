@@ -60,3 +60,11 @@ model QuestionTopic {
   @@map("question_topics")
   @@schema("questionservice")
 }
+
+model Language {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  @@map("languages")
+  @@schema("questionservice")
+}

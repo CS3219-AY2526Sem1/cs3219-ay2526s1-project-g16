@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { asyncHandler } from "../middlewares/asyncHandler.ts";
 import {
-    createQuestionHandler,
-    getQuestionHandler,
-    listQuestionsHandler,
-    updateQuestionHandler,
-    deleteQuestionHandler,
+  createQuestionHandler,
+  getQuestionHandler,
+  listQuestionsHandler,
+  updateQuestionHandler,
+  deleteQuestionHandler,
 } from "../controllers/question-controller.ts";
 
 const router = Router();
