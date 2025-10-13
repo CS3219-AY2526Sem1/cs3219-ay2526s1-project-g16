@@ -10,14 +10,12 @@ datasource db {
 }
 
 model attempt {
-  id             String   @id @default(uuid())
-  username       String
-  matchUsername  String
-  question       String
-  questionTags   String[]
-  difficulty     String
-  code           String
-  createdAt      DateTime @default(now())
+  id            String   @id @default(uuid())
+  username      String
+  matchUsername String
+  question      Int
+  code          String
+  createdAt     DateTime @default(now())
 
   @@map("attempt")
   @@schema("attempt-hist")
