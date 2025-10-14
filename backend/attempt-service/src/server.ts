@@ -9,7 +9,7 @@ dotenv.config();
 
 const app = express();
 
-// Use cors to allow any origin to access this app.
+// Use cors to allow frontend to access this app.
 app.use(
   cors({
     origin: "http://localhost:8000", // frontend url
