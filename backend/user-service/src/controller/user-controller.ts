@@ -231,7 +231,7 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user?.id;
     const modifiedUserId = req.params.id;
-    if (!userId || modifiedUserId != modifiedUserId) {
+    if (!userId || userId != modifiedUserId) {
       res.status(401).json({ error: "Unauthorized to modify this user" });
       return;
     }
