@@ -21,29 +21,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // On app load, check for existing token and if so, use it to fetch user info
   useEffect(() => {
     (async () => {
-      const getUser = async (response: Response) => {
-        const user: User = await response.json();
-        setUser(user);
-        setIsAuthenticated(true);
-      };
-
       try {
         const response = await authFetch(`${USER_SERVICE_URL}/user`);
         if (response.ok) {
-          return await getUser(response);
+          const user: User = await response.json();
+          setUser(user);
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
         }
-
-        const refresh = await authFetch(`${USER_SERVICE_URL}/user/refresh`, {
-          method: "POST",
-        });
-        if (refresh.ok) {
-          return await getUser(refresh);
-        }
-
-        setUser(null);
-        setIsAuthenticated(false);
       } catch (error) {
         console.error("Error validating existing token:", error);
+        setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
