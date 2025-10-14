@@ -6,17 +6,6 @@ import {
   getUniqueQuestionsByUserId as _getUniqueQuestionsByUserId,
 } from "../model/attempt.ts";
 
-export async function helloWorld(req: Request, res: Response): Promise<void> {
-  try {
-    const username = req.user?.username;
-    res.status(400).json({ message: `hello ${username}` });
-    return;
-  } catch {
-    res.status(500).json({ error: "Internal Server Error" });
-    return;
-  }
-}
-
 export async function addAttempt(req: Request, res: Response): Promise<void> {
   try {
     const { userId, matchUsername, question, code } = req.body;
