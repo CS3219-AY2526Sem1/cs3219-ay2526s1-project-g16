@@ -23,6 +23,6 @@ router.post("/refresh", refreshAccessToken);
 
 router.post("/logout", logout);
 
-router.patch("/update/:id", authenticateJWT, updateUser);
+router.patch("/:id", authenticateJWT, updateUser);
 
 export default router;
