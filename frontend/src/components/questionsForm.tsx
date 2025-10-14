@@ -31,7 +31,7 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 
 const questionSchema = z.object({
-  id: z.number(),
+  id: z.number().optional(), // id is optional for new questions
   title: z.string().min(1),
   statement: z.string().min(1),
   difficulty: z.enum(questionDifficulties),
@@ -44,19 +44,32 @@ const questionSchema = z.object({
 
 export function QuestionsForm({
   currentQuestion,
+  setNewQuestion,
 }: {
-  currentQuestion: Question;
+  currentQuestion: Question | undefined;
+  setNewQuestion: (question: Question) => void;
 }) {
   const form = useForm<z.infer<typeof questionSchema>>({
     resolver: zodResolver(questionSchema),
-    values: currentQuestion && {
-      ...currentQuestion,
-      topicNames: currentQuestion.topics.map(({ topic }) => topic.name),
-      exampleIO: currentQuestion.exampleIO ?? [],
-      constraints:
-        currentQuestion.constraints?.map((constraint) => ({ constraint })) ??
-        [],
-    },
+    values: currentQuestion
+      ? {
+          ...currentQuestion,
+          topicNames: currentQuestion.topics.map(({ topic }) => topic.name),
+          exampleIO: currentQuestion.exampleIO ?? [],
+          constraints:
+            currentQuestion.constraints?.map((constraint) => ({
+              constraint,
+            })) ?? [],
+        }
+      : {
+          title: "",
+          statement: "",
+          difficulty: "Easy",
+          topicNames: [],
+          exampleIO: [],
+          constraints: [],
+          solutionOutline: "",
+        },
   });
   const exampleIOArray = useFieldArray({
     control: form.control,
@@ -68,35 +81,54 @@ export function QuestionsForm({
   });
 
   const mutation = useMutation({
-    mutationFn: async (data: z.infer<typeof questionSchema>) => {
+    mutationFn: async (data: z.infer<typeof questionSchema>, context) => {
+      if (!context.meta) context.meta = {};
+      context.meta.isEdit = data.id != null;
+
       const requestData = {
         ...data,
         constraints: data.constraints.map(({ constraint }) => constraint),
       };
-      const res = await authFetch(`${QN_SERVICE_URL}/${data.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestData),
-      });
 
-      if (!res.ok) {
-        throw new Error("Failed to update question");
+      if (requestData.id == null) {
+        const res = await authFetch(QN_SERVICE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestData),
+        });
+        if (!res.ok) throw new Error("Failed to create question");
+
+        return res.json();
+      } else {
+        const res = await authFetch(`${QN_SERVICE_URL}/${data.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestData),
+        });
+        if (!res.ok) throw new Error("Failed to update question");
+
+        return res.json();
       }
-
-      return res.json();
     },
-    onSuccess: (data: Question) => {
-      queryClient.setQueryData(
+    onSuccess: async (data: Question, _, __, { meta }) => {
+      await queryClient.setQueryData(
         ["questions"],
         (oldData: ListQuestionsResponse) => ({
           ...oldData,
-          items: oldData.items.map((d) => (d.id === data.id ? data : d)),
+          items: meta?.isEdit
+            ? oldData.items.map((d) => (d.id === data.id ? data : d))
+            : [data, ...oldData.items],
         }),
       );
-      toast("Question successfully updated");
+      if (!meta?.isEdit) {
+        setNewQuestion(data);
+      }
+      toast(`Question successfully ${meta?.isEdit ? "updated" : "created"}!`);
     },
-    onError: (error: Error) => {
-      toast.error(`Error updating question: ${error.message}`);
+    onError: (error: Error, _, __, { meta }) => {
+      toast.error(
+        `Error ${meta?.isEdit ? "updating" : "creating"} question: ${error.message}`,
+      );
     },
   });
   const queryClient = useQueryClient();
@@ -108,10 +140,10 @@ export function QuestionsForm({
   return (
     <Form {...form}>
       <form
-        className="h-150 w-2/3 content-start overflow-y-auto"
+        className="h-full overflow-y-auto"
         onSubmit={form.handleSubmit(onSubmit)}
       >
-        <div className="flex w-full flex-wrap gap-4 p-6">
+        <div className="flex w-full content-start flex-wrap gap-4 p-6">
           <FormField
             control={form.control}
             name="title"
@@ -275,7 +307,7 @@ export function QuestionsForm({
           </Button>
         </div>
 
-        <div className="border-t-1 flex w-full justify-end gap-4 p-6">
+        <footer className="border-t-1 flex w-full justify-end gap-4 p-6">
           <Button
             variant="secondary"
             disabled={!form.formState.isDirty || mutation.isPending}
@@ -291,7 +323,7 @@ export function QuestionsForm({
             {mutation.isPending && <Loader2Icon className="animate-spin" />}
             Submit changes
           </Button>
-        </div>
+        </footer>
       </form>
     </Form>
   );

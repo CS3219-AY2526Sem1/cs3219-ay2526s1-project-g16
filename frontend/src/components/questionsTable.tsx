@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import type { ColumnType } from "@/routes/_authenticated/manage-questions";
 import {
   flexRender,
   getCoreRowModel,
@@ -14,19 +15,19 @@ import {
   TableRow,
 } from "./ui/table";
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
+interface DataTableProps {
+  columns: ColumnDef<ColumnType, string>[];
+  data: ColumnType[];
   selectedIndex: number | null;
   setSelectedIndex: (index: number | null) => void;
 }
 
-export function QuestionsTable<TData, TValue>({
+export function QuestionsTable({
   columns,
   data,
   selectedIndex,
   setSelectedIndex,
-}: DataTableProps<TData, TValue>) {
+}: DataTableProps) {
   const table = useReactTable({
     data,
     columns,
@@ -35,7 +36,6 @@ export function QuestionsTable<TData, TValue>({
       const key = Object.keys(
         typeof select === "function" ? select({}) : select,
       );
-
       setSelectedIndex(key.length === 0 ? null : Number(key[0]));
     },
     state: {
@@ -68,6 +68,9 @@ export function QuestionsTable<TData, TValue>({
         {table.getRowModel().rows?.length ? (
           table.getRowModel().rows.map((row) => (
             <TableRow
+              className={cn({
+                "bg-green-50 text-neutral-500": row.original.id == null,
+              })}
               key={row.id}
               data-state={row.getIsSelected() && "selected"}
               onClick={() => row.toggleSelected(true)}

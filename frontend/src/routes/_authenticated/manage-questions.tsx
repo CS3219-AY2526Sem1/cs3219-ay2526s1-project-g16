@@ -1,9 +1,10 @@
 import { QuestionsForm } from "@/components/questionsForm";
 import { QuestionsTable } from "@/components/questionsTable";
+import { Button } from "@/components/ui/button";
 
 import { QN_SERVICE_URL } from "@/constants";
 import { authFetch } from "@/lib/utils";
-import { type ListQuestionsResponse, type Question } from "@/types";
+import { type ListQuestionsResponse } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -17,6 +18,8 @@ export const Route = createFileRoute("/_authenticated/manage-questions")({
   },
   component: ManageQuestions,
 });
+
+export type ColumnType = { id: number | undefined; title: string };
 
 function ManageQuestions() {
   const { isPending, isError, isSuccess, data, error } =
@@ -32,9 +35,14 @@ function ManageQuestions() {
     });
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const columns: ColumnDef<Pick<Question, "id" | "title">>[] = [
-    { accessorKey: "id", header: "ID" },
-    { accessorKey: "title", header: "Title" },
+  const [tempNewQuestions, setTempNewQuestions] = useState<ColumnType[]>([]);
+  const columns: ColumnDef<ColumnType>[] = [
+    { accessorKey: "id", header: "ID", accessorFn: (row) => row.id ?? "" },
+    {
+      accessorKey: "title",
+      header: "Title",
+      accessorFn: (row) => (row.id == null ? "New Question" : row.title),
+    },
   ];
 
   // TODO: handle pagination correctly (instead of just data.items)
@@ -47,22 +55,40 @@ function ManageQuestions() {
         {isError && <div className="self-center">Error: {error.message}</div>}
         {isSuccess && (
           <>
-            <div className="w-1/3 border-r">
+            <div className="w-1/3 border-r flex flex-col justify-between">
               <QuestionsTable
                 columns={columns}
-                data={data?.items ?? []}
+                data={[...data.items, ...tempNewQuestions]}
                 selectedIndex={selectedIndex}
                 setSelectedIndex={setSelectedIndex}
               />
+              <Button
+                className="m-4"
+                onClick={() =>
+                  setTempNewQuestions([
+                    ...tempNewQuestions,
+                    { id: undefined, title: "" },
+                  ])
+                }
+              >
+                + Add New Question
+              </Button>
             </div>
-            {selectedIndex == null ? (
-              <div className="m-8 flex w-2/3 items-center justify-center text-neutral-500">
-                No question selected
-              </div>
-            ) : (
-              <QuestionsForm currentQuestion={data.items[selectedIndex]} />
-            )}
-            {/* </div> */}
+            <div className="flex items-center justify-center h-150 w-2/3">
+              {selectedIndex == null ? (
+                <span className="text-neutral-500">No question selected</span>
+              ) : (
+                <QuestionsForm
+                  currentQuestion={data.items[selectedIndex]}
+                  setNewQuestion={() => {
+                    setTempNewQuestions((prev) =>
+                      prev.toSpliced(selectedIndex - data.items.length, 1),
+                    );
+                    setSelectedIndex(0);
+                  }}
+                />
+              )}
+            </div>
           </>
         )}
       </div>
