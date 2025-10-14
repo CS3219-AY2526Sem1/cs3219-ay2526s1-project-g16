@@ -7,7 +7,6 @@ import { authFetch } from "@/lib/utils";
 import { type ListQuestionsResponse } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { type ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/manage-questions")({
@@ -36,45 +35,46 @@ function ManageQuestions() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const [tempNewQuestions, setTempNewQuestions] = useState<ColumnType[]>([]);
-  const columns: ColumnDef<ColumnType>[] = [
-    { accessorKey: "id", header: "ID", accessorFn: (row) => row.id ?? "" },
-    {
-      accessorKey: "title",
-      header: "Title",
-      accessorFn: (row) => (row.id == null ? "New Question" : row.title),
-    },
-  ];
 
   // TODO: handle pagination correctly (instead of just data.items)
   return (
     <main className="mx-64 my-8 flex flex-col gap-6">
       <h1 className="text-3xl font-medium">Manage Questions</h1>
 
-      <div className="flex justify-center rounded-md border">
+      <div className="flex h-150  justify-center rounded-md border">
         {isPending && <div className="self-center">Loading...</div>}
         {isError && <div className="self-center">Error: {error.message}</div>}
         {isSuccess && (
           <>
             <div className="w-1/3 border-r flex flex-col justify-between">
-              <QuestionsTable
-                columns={columns}
-                data={[...data.items, ...tempNewQuestions]}
-                selectedIndex={selectedIndex}
-                setSelectedIndex={setSelectedIndex}
-              />
-              <Button
-                className="m-4"
-                onClick={() =>
-                  setTempNewQuestions([
-                    ...tempNewQuestions,
-                    { id: undefined, title: "" },
-                  ])
-                }
-              >
-                + Add New Question
-              </Button>
+              <div className="overflow-y-auto">
+                <QuestionsTable
+                  data={[...data.items, ...tempNewQuestions]}
+                  selectedIndex={selectedIndex}
+                  setSelectedIndex={setSelectedIndex}
+                  removeTempNewQuestion={(index) => {
+                    setTempNewQuestions((prev) =>
+                      prev.toSpliced(index - data.items.length, 1),
+                    );
+                    setSelectedIndex(null);
+                  }}
+                />
+              </div>
+              <div className="border-t-1 p-4">
+                <Button
+                  className="w-full"
+                  onClick={() =>
+                    setTempNewQuestions([
+                      ...tempNewQuestions,
+                      { id: undefined, title: "" },
+                    ])
+                  }
+                >
+                  + Add New Question
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center justify-center h-150 w-2/3">
+            <div className="flex items-center justify-center w-2/3">
               {selectedIndex == null ? (
                 <span className="text-neutral-500">No question selected</span>
               ) : (

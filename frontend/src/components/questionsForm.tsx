@@ -140,10 +140,10 @@ export function QuestionsForm({
   return (
     <Form {...form}>
       <form
-        className="h-full overflow-y-auto"
+        className="h-full flex flex-col"
         onSubmit={form.handleSubmit(onSubmit)}
       >
-        <div className="flex w-full content-start flex-wrap gap-4 p-6">
+        <div className="flex w-full content-start flex-wrap overflow-y-auto gap-4 p-6">
           <FormField
             control={form.control}
             name="title"
@@ -307,7 +307,7 @@ export function QuestionsForm({
           </Button>
         </div>
 
-        <footer className="border-t-1 flex w-full justify-end gap-4 p-6">
+        <footer className="border-t-1 w-full flex justify-end gap-4 p-4">
           <Button
             variant="secondary"
             disabled={!form.formState.isDirty || mutation.isPending}
