@@ -8,7 +8,7 @@ import {
 
 export async function addAttempt(req: Request, res: Response): Promise<void> {
   try {
-    const { userId, matchUsername, question, code } = req.body;
+    const { userId, collabId, question, code } = req.body;
 
     if (req.user?.id != userId) {
       res.status(401).json({ error: "Unauthorized to add this attempt" });
@@ -17,7 +17,7 @@ export async function addAttempt(req: Request, res: Response): Promise<void> {
 
     if (
       typeof userId !== "string" ||
-      typeof matchUsername !== "string" ||
+      typeof collabId !== "string" ||
       typeof question !== "number" ||
       typeof code !== "string"
     ) {
@@ -25,7 +25,7 @@ export async function addAttempt(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    await _addAttempt(userId, matchUsername, question, code);
+    await _addAttempt(userId, collabId, question, code);
 
     res.status(201).json({ message: "Attempt created" });
     return;

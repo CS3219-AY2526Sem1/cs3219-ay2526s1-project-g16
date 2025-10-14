@@ -3,14 +3,14 @@ import type { attempt } from "../generated/prisma/index.js";
 
 export async function addAttempt(
   userId: string,
-  matchUsername: string,
+  collabId: string,
   question: number,
   code: string,
 ): Promise<attempt> {
   const newAttempt = await prisma.attempt.create({
     data: {
       userId,
-      matchUsername,
+      collabId,
       question,
       code,
     },
