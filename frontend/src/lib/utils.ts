@@ -1,3 +1,4 @@
+import { USER_SERVICE_URL } from "@/constants";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -18,7 +19,7 @@ export async function authFetch(
   if (response.status === 401 && retry) {
     // try refreshing token once
     const refresh = await fetch(
-      `${import.meta.env.VITE_USER_SERVICE_URL}/user/refresh`,
+      `${USER_SERVICE_URL}/user/refresh`,
       {
         method: "POST",
         credentials: "include",
