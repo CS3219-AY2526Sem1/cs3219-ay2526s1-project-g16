@@ -36,7 +36,7 @@ export function QuestionsTable({
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`${QN_SERVICE_URL}/${id}`, {
+      const response = await fetch(`${QN_SERVICE_URL}/questions/${id}`, {
         method: "DELETE",
       });
       if (!response.ok) {

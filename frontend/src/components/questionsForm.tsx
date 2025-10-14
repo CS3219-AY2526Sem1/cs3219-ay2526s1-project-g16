@@ -15,19 +15,31 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { QN_SERVICE_URL } from "@/constants";
-import { authFetch } from "@/lib/utils";
+import { authFetch, cn } from "@/lib/utils";
 import {
   questionDifficulties,
   type ListQuestionsResponse,
   type Question,
+  type Topic,
 } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, Trash } from "lucide-react";
+import { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
 import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "./ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Textarea } from "./ui/textarea";
 
 const questionSchema = z.object({
@@ -45,9 +57,11 @@ const questionSchema = z.object({
 export function QuestionsForm({
   currentQuestion,
   setNewQuestion,
+  topics,
 }: {
   currentQuestion: Question | undefined;
   setNewQuestion: (question: Question) => void;
+  topics: Topic[];
 }) {
   const form = useForm<z.infer<typeof questionSchema>>({
     resolver: zodResolver(questionSchema),
@@ -91,7 +105,7 @@ export function QuestionsForm({
       };
 
       if (requestData.id == null) {
-        const res = await authFetch(QN_SERVICE_URL, {
+        const res = await authFetch(`${QN_SERVICE_URL}/questions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
@@ -100,7 +114,7 @@ export function QuestionsForm({
 
         return res.json();
       } else {
-        const res = await authFetch(`${QN_SERVICE_URL}/${data.id}`, {
+        const res = await authFetch(`${QN_SERVICE_URL}/questions/${data.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
@@ -132,6 +146,8 @@ export function QuestionsForm({
     },
   });
   const queryClient = useQueryClient();
+
+  const [searchedTopic, setSearchedTopic] = useState("");
 
   const onSubmit = async (data: z.infer<typeof questionSchema>) => {
     mutation.mutate(data);
@@ -211,7 +227,91 @@ export function QuestionsForm({
             )}
           />
 
-          <FormLabel className="w-1/2">Example Inputs/Outputs</FormLabel>
+          <FormLabel className="-mb-1 w-1/2">Topics</FormLabel>
+          <FormField
+            control={form.control}
+            name="topicNames"
+            render={({ field }) => {
+              const isNewTopic = !field.value.includes(searchedTopic);
+              return (
+                <FormItem className="w-3/4 mx-auto">
+                  <FormControl>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Input
+                          placeholder="Select topics"
+                          value={
+                            form
+                              .getValues("topicNames")
+                              .map((name) => name)
+                              .join(", ") || "Select topics"
+                          }
+                        />
+                      </PopoverTrigger>
+
+                      <PopoverContent className="p-0 w-56">
+                        <Command>
+                          <CommandInput
+                            placeholder="Search topics..."
+                            value={searchedTopic}
+                            onValueChange={setSearchedTopic}
+                          />
+                          <CommandList>
+                            <CommandEmpty
+                              onClick={() =>
+                                isNewTopic &&
+                                form.setValue("topicNames", [
+                                  ...form.getValues("topicNames"),
+                                  searchedTopic,
+                                ])
+                              }
+                              className={cn(
+                                "text-center text-sm p-4 m-2 rounded-md",
+                                { "hover:bg-accent": isNewTopic },
+                              )}
+                            >
+                              {isNewTopic
+                                ? `Create topic "${searchedTopic}"`
+                                : `Topic "${searchedTopic}" already added`}
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {[
+                                ...topics.map(({ name }) => name),
+                                ...field.value,
+                              ]
+                                .filter((v, i, a) => a.indexOf(v) === i)
+                                .map((topic, i) => (
+                                  <CommandItem
+                                    key={i}
+                                    onSelect={() =>
+                                      field.onChange(
+                                        field.value.includes(topic)
+                                          ? field.value.filter(
+                                              (name) => name !== topic,
+                                            )
+                                          : [...field.value, topic],
+                                      )
+                                    }
+                                  >
+                                    <Checkbox
+                                      className="mr-2"
+                                      checked={field.value.includes(topic)}
+                                    />
+                                    {topic}
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </FormControl>
+                </FormItem>
+              );
+            }}
+          />
+
+          <FormLabel className="w-1/2 -mb-1">Example Inputs/Outputs</FormLabel>
           {exampleIOArray.fields.length === 0 ? (
             <div className="w-full text-center text-sm text-neutral-500">
               No example inputs/outputs
@@ -265,7 +365,7 @@ export function QuestionsForm({
             Add example input/output
           </Button>
 
-          <FormLabel className="w-1/2">Constraints</FormLabel>
+          <FormLabel className="w-1/2 -mb-1">Constraints</FormLabel>
           {constraintsArray.fields.length === 0 ? (
             <div className="w-full text-center text-sm text-neutral-500">
               No constraints

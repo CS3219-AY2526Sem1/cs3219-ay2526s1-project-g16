@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 import { QN_SERVICE_URL } from "@/constants";
 import { authFetch } from "@/lib/utils";
-import { type ListQuestionsResponse } from "@/types";
+import { type ListQuestionsResponse, type ListTopicsResponse } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
@@ -21,17 +21,28 @@ export const Route = createFileRoute("/_authenticated/manage-questions")({
 export type ColumnType = { id: number | undefined; title: string };
 
 function ManageQuestions() {
-  const { isPending, isError, isSuccess, data, error } =
-    useQuery<ListQuestionsResponse>({
-      queryKey: ["questions"],
-      queryFn: async () => {
-        const res = await authFetch(QN_SERVICE_URL);
-        if (!res.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return res.json();
-      },
-    });
+  const qnsQuery = useQuery<ListQuestionsResponse>({
+    queryKey: ["questions"],
+    queryFn: async () => {
+      const res = await authFetch(`${QN_SERVICE_URL}/questions`);
+      if (!res.ok) {
+        throw new Error("Questions response was not ok");
+      }
+      return res.json();
+    },
+  });
+
+  const topicsQuery = useQuery<ListTopicsResponse>({
+    queryKey: ["topics"],
+    queryFn: async () => {
+      const res = await authFetch(`${QN_SERVICE_URL}/topics`);
+      if (!res.ok) {
+        throw new Error("Topics response was not ok");
+      }
+      return res.json();
+    },
+  });
+
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const [tempNewQuestions, setTempNewQuestions] = useState<ColumnType[]>([]);
@@ -42,19 +53,27 @@ function ManageQuestions() {
       <h1 className="text-3xl font-medium">Manage Questions</h1>
 
       <div className="flex h-150  justify-center rounded-md border">
-        {isPending && <div className="self-center">Loading...</div>}
-        {isError && <div className="self-center">Error: {error.message}</div>}
-        {isSuccess && (
+        {qnsQuery.isPending ||
+          (topicsQuery.isPending && (
+            <div className="self-center">Loading...</div>
+          ))}
+        {qnsQuery.isError ||
+          (topicsQuery.isError && (
+            <div className="self-center">
+              Error: {(qnsQuery.error ?? topicsQuery.error).message}
+            </div>
+          ))}
+        {qnsQuery.isSuccess && topicsQuery.isSuccess && (
           <>
             <div className="w-1/3 border-r flex flex-col justify-between">
               <div className="overflow-y-auto">
                 <QuestionsTable
-                  data={[...data.items, ...tempNewQuestions]}
+                  data={[...qnsQuery.data.items, ...tempNewQuestions]}
                   selectedIndex={selectedIndex}
                   setSelectedIndex={setSelectedIndex}
                   removeTempNewQuestion={(index) => {
                     setTempNewQuestions((prev) =>
-                      prev.toSpliced(index - data.items.length, 1),
+                      prev.toSpliced(index - qnsQuery.data.items.length, 1),
                     );
                     setSelectedIndex(null);
                   }}
@@ -79,13 +98,17 @@ function ManageQuestions() {
                 <span className="text-neutral-500">No question selected</span>
               ) : (
                 <QuestionsForm
-                  currentQuestion={data.items[selectedIndex]}
+                  currentQuestion={qnsQuery.data.items[selectedIndex]}
                   setNewQuestion={() => {
                     setTempNewQuestions((prev) =>
-                      prev.toSpliced(selectedIndex - data.items.length, 1),
+                      prev.toSpliced(
+                        selectedIndex - qnsQuery.data.items.length,
+                        1,
+                      ),
                     );
                     setSelectedIndex(0);
                   }}
+                  topics={topicsQuery.data.topics}
                 />
               )}
             </div>

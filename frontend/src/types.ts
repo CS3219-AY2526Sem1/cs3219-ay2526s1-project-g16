@@ -14,6 +14,11 @@ export type ListQuestionsResponse = {
   take: number;
 };
 
+export type ListTopicsResponse = {
+  count: number;
+  topics: Topic[];
+};
+
 export type Topic = {
   id: number;
   name: string;
