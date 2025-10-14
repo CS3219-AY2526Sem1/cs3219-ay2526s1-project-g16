@@ -21,16 +21,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // On app load, check for existing token and if so, use it to fetch user info
   useEffect(() => {
     (async () => {
-      const token = localStorage.getItem(ACCESS_TOKEN);
-      if (!token) return setIsLoading(false);
-
-      try {
-        const response = await authFetch(`${USER_SERVICE_URL}/user`);
+      const getUser = async (response: Response) => {
         const user: User = await response.json();
         setUser(user);
         setIsAuthenticated(true);
-      } catch {
-        localStorage.removeItem(ACCESS_TOKEN);
+      };
+
+      try {
+        const response = await authFetch(`${USER_SERVICE_URL}`);
+        if (response.ok) {
+          return await getUser(response);
+        }
+
+        const refresh = await authFetch(`${USER_SERVICE_URL}/refresh`, {
+          method: "POST",
+        });
+        if (refresh.ok) {
+          return await getUser(refresh);
+        }
+
+        setUser(null);
+        setIsAuthenticated(false);
+      } catch (error) {
+        console.error("Error validating existing token:", error);
       } finally {
         setIsLoading(false);
       }
@@ -49,8 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     let response: Response;
     try {
-      // not using authFetch as we shouldn't have a token yet
-      response = await fetch(`${USER_SERVICE_URL}/user/login`, {
+      response = await authFetch(`${USER_SERVICE_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -70,10 +82,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(true);
   };
 
-  const logout = () => {
-    localStorage.removeItem(ACCESS_TOKEN);
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = async () => {
+    try {
+      return void (await authFetch(`${USER_SERVICE_URL}/logout`, {
+        method: "POST",
+      }));
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   };
 
   return (
