@@ -44,6 +44,6 @@ const collabProxy = createCollabProxy();
 app.use('/collab', authenticateJWT, collabProxy);
 
 
-const server = app.listen(port, () => {
+app.listen(port, () => {
   console.log(`API gateway running on port ${port}. Frontend URL: ${frontend}`);
 });
