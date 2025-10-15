@@ -2,6 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from "dotenv";
+import {
+    createUserProxy,
+} from './proxy.ts';
+import { authenticateJWT } from './access-control.ts';
 
 dotenv.config();
 
@@ -17,7 +21,16 @@ app.use(
   })
 );
 app.use(cookieParser());
-app.use(express.json());
+
+// user service routes
+const userProxy = createUserProxy();
+app.post('/user/register', userProxy);
+app.post('/user/login', userProxy);
+app.post('/user/refresh', userProxy);
+app.post('/user/logout', userProxy);
+// default: all other routes require authenticateJWT middleware
+app.use('/user', authenticateJWT, userProxy);
+
 
 const server = app.listen(port, () => {
   console.log(`API gateway running on port ${port}. Frontend URL: ${frontend}`);

@@ -20,8 +20,9 @@
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
+    "@types/http-proxy-middleware": "^0.19.3",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.5.2",
+    "@types/node": "^24.7.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },
@@ -30,6 +31,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
     "nodemon": "^3.1.10"
   }
 }
