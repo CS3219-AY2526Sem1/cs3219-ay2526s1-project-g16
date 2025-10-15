@@ -7,7 +7,6 @@ import {
   logout,
   updateUser,
 } from "../controller/user-controller.ts";
-import { authenticateJWT } from "shared-middleware";
 
 const router = express.Router();
 
