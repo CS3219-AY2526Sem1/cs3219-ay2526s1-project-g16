@@ -1,4 +1,4 @@
-import { ACCESS_TOKEN, USER_SERVICE_URL } from "@/constants";
+import { USER_SERVICE_URL } from "@/constants";
 import { authFetch } from "@/lib/utils";
 import type { User } from "@/types";
 import { LoaderCircle } from "lucide-react";
@@ -8,7 +8,7 @@ export type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -21,29 +21,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // On app load, check for existing token and if so, use it to fetch user info
   useEffect(() => {
     (async () => {
-      const getUser = async (response: Response) => {
-        const user: User = await response.json();
-        setUser(user);
-        setIsAuthenticated(true);
-      };
-
       try {
-        const response = await authFetch(`${USER_SERVICE_URL}`);
+        const response = await authFetch(`${USER_SERVICE_URL}/user`);
         if (response.ok) {
-          return await getUser(response);
+          const user: User = await response.json();
+          setUser(user);
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
         }
-
-        const refresh = await authFetch(`${USER_SERVICE_URL}/refresh`, {
-          method: "POST",
-        });
-        if (refresh.ok) {
-          return await getUser(refresh);
-        }
-
-        setUser(null);
-        setIsAuthenticated(false);
       } catch (error) {
         console.error("Error validating existing token:", error);
+        setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
@@ -62,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     let response: Response;
     try {
-      response = await authFetch(`${USER_SERVICE_URL}/login`, {
+      response = await authFetch(`${USER_SERVICE_URL}/user/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -76,15 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error("Invalid username or password.");
     }
 
-    const data = await response.json();
-    localStorage.setItem(ACCESS_TOKEN, data.data.accessToken);
-    setUser(data.data.user);
+    const data: User = await response.json();
+    setUser(data);
     setIsAuthenticated(true);
   };
 
   const logout = async () => {
     try {
-      return void (await authFetch(`${USER_SERVICE_URL}/logout`, {
+      return void (await authFetch(`${USER_SERVICE_URL}/user/logout`, {
         method: "POST",
       }));
     } catch (error) {

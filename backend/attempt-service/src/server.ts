@@ -1,15 +1,15 @@
-import cookieParser from "cookie-parser";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import express from "express";
+import attemptRoutes from "./routes/attempt-routes.ts";
 import { initConnection } from "./model/prisma-client.ts";
-import userRoutes from "./routes/user-routes.ts";
 
 dotenv.config();
 
 const app = express();
 
-// Use cors to allow any origin to access this app.
+// Use cors to allow frontend to access this app.
 app.use(
   cors({
     origin: "http://localhost:8000", // frontend url
@@ -21,15 +21,15 @@ app.use(cookieParser());
 
 app.use(express.json());
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 
-// Add user routes
-app.use("/user", userRoutes);
+// Add attempt routes
+app.use("/attempt", attemptRoutes);
 
 initConnection()
   .then(() => {
     app.listen(port, () => {
-      console.log(`User service is running at http://localhost:${port}`);
+      console.log(`Attempt service is running at http://localhost:${port}`);
     });
   })
   .catch((err) => {

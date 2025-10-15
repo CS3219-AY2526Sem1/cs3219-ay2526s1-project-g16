@@ -10,11 +10,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import z from "zod";
 
 export const Route = createFileRoute("/_unauthenticated/register")({
+  validateSearch: (search) => ({
+    redirect: search?.redirect?.toString(),
+  }),
+  beforeLoad: ({ context, search }) => {
+    if (context.auth.isAuthenticated) {
+      throw redirect({ to: search.redirect ?? "/" });
+    }
+  },
   component: Register,
 });
 
