@@ -1,8 +1,10 @@
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import express from "express";
 import collabRoutes from "./routes/collab-routes.ts";
 import { initConnection } from "./model/collab-model.ts";
+
 
 dotenv.config();
 
@@ -10,6 +12,8 @@ const app = express();
 
 // Use cors to allow any origin to access this app.
 app.use(cors());
+
+app.use(cookieParser());
 
 app.use(express.json());
 
