@@ -15,3 +15,19 @@ export const createUserProxy = () =>
       }
     }
   });
+
+export const createAttemptProxy = () =>
+  createProxyMiddleware({
+    target: process.env.ATTEMPT_SERVICE_URL,
+    changeOrigin: true,
+    logger: console,
+    pathRewrite: {
+      '^/attempt': '', // Remove /attempt prefix
+    },
+    on: {
+      proxyReq: (proxyReq, req, res) => {
+        const targetUrl = `${process.env.ATTEMPT_SERVICE_URL}${req.url}`;
+        console.log(`[Proxy] ${req.method} ${req.url} -> ${targetUrl}`);
+      }
+    }
+  });

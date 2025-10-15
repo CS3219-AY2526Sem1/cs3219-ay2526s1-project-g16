@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from "dotenv";
 import {
+    createAttemptProxy,
     createUserProxy,
 } from './proxy.ts';
 import { authenticateJWT, authorizeJWT } from './access-control.ts';
@@ -32,6 +33,10 @@ app.post('/user/logout', userProxy);
 app.patch("/user/:id", authorizeJWT, userProxy);
 // default: all other routes require authenticateJWT middleware
 app.use('/user', authenticateJWT, userProxy);
+
+// attempt service routes
+const attemptProxy = createAttemptProxy();
+app.use('/attempt', authenticateJWT, attemptProxy);
 
 
 const server = app.listen(port, () => {
