@@ -20,7 +20,7 @@ app.use(express.json());
 const port = process.env.PORT || 3009;
 
 // Add collab routes
-app.use("/collab", collabRoutes);
+app.use("/", collabRoutes);
 
 initConnection()
   .then(() => {
