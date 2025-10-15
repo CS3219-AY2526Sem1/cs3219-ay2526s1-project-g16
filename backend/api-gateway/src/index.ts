@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from "dotenv";
 import {
     createAttemptProxy,
+    createCollabProxy,
     createUserProxy,
 } from './proxy.ts';
 import { authenticateJWT, authorizeJWT } from './access-control.ts';
@@ -37,6 +38,10 @@ app.use('/user', authenticateJWT, userProxy);
 // attempt service routes
 const attemptProxy = createAttemptProxy();
 app.use('/attempt', authenticateJWT, attemptProxy);
+
+// collab service routes
+const collabProxy = createCollabProxy();
+app.use('/collab', authenticateJWT, collabProxy);
 
 
 const server = app.listen(port, () => {

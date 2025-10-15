@@ -31,3 +31,17 @@ export const createAttemptProxy = () =>
       }
     }
   });
+
+  export const createCollabProxy = () =>
+  createProxyMiddleware({
+    target: process.env.COLLAB_SERVICE_URL,
+    changeOrigin: true,
+    ws: true,
+    logger: console,
+    on: {
+      proxyReq: (proxyReq, req, res) => {
+        const targetUrl = `${process.env.COLLAB_SERVICE_URL}${req.url}`;
+        console.log(`[Proxy] ${req.method} ${req.url} -> ${targetUrl}`);
+      }
+    }
+  });
