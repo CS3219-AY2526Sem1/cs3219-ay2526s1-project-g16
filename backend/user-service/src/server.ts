@@ -24,7 +24,7 @@ app.use(express.json());
 const port = process.env.PORT || 3000;
 
 // Add user routes
-app.use("/user", userRoutes);
+app.use("/", userRoutes);
 
 initConnection()
   .then(() => {
