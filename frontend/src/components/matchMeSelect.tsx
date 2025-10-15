@@ -71,6 +71,7 @@ export function MultiMatchMeSelect({
     <div className="relative mr-10 flex flex-wrap gap-y-2">
       {items.map((value, i) => (
         <div
+        key={i}
           className={cn("relative", {
             "[&:hover>svg]:opacity-100": items.length > 1,
           })}
