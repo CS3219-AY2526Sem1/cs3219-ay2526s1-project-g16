@@ -1,5 +1,4 @@
 import express from "express";
-import { authenticateJWT } from "shared-middleware";
 import {
   createSession,
   joinSession,
