@@ -59,6 +59,7 @@ export function MultiMatchMeSelect({
   itemClassName,
   items,
   setItems,
+  disabled,
 }: {
   placeholder: string;
   choices: { value: string; label: string }[];
@@ -66,12 +67,13 @@ export function MultiMatchMeSelect({
   itemClassName?: string;
   items: string[];
   setItems: React.Dispatch<React.SetStateAction<string[]>>;
+  disabled?: boolean;
 }) {
   return (
     <div className="relative mr-10 flex flex-wrap gap-y-2">
       {items.map((value, i) => (
         <div
-        key={i}
+          key={i}
           className={cn("relative", {
             "[&:hover>svg]:opacity-100": items.length > 1,
           })}
@@ -84,6 +86,7 @@ export function MultiMatchMeSelect({
                 prev.map((v, idx) => (idx === i ? newValue : v)),
               )
             }
+            disabled={disabled}
           >
             <SelectTrigger
               className={cn(
@@ -123,6 +126,7 @@ export function MultiMatchMeSelect({
         variant="ghost"
         size="icon"
         onClick={() => setItems((prev) => [...prev, ""])}
+        disabled={disabled}
       >
         <CirclePlus className="text-accent-foreground" />
       </Button>
