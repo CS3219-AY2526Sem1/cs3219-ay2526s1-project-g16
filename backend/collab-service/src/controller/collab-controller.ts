@@ -6,6 +6,7 @@ import {
   joinSession as _joinSession,
   leaveSession as _leaveSession,
 } from "../model/collab-model.ts";
+import { decodeAccessToken } from "./collab-utils.ts";
 
 // POST /collab/sessions
 export async function createSession(req: Request, res: Response) {
@@ -32,7 +33,6 @@ export async function endSession(req: Request, res: Response) {
   try {
     const {id} = req.params;
     if (!id) return res.status(400).json({ error: "id is required" });
-    const user = req.user!;
     
     const session = await _getSession(id);
     if (!session) return res.status(404).json({ error: "Session not found" });
@@ -51,7 +51,7 @@ export async function joinSession(req: Request, res: Response) {
   try {
     const { id } = req.params;
     if (!id) return res.status(400).json({ error: "id is required" });
-    const user = req.user!;
+    const decoded = decodeAccessToken(req.cookies);
     if (!user.username) return res.status(400).json({ error: "username is required" });
 
     const session = await _joinSession(id, { id: user.id, username: user.username });
