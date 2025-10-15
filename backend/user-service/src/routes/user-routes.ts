@@ -15,14 +15,14 @@ router.post("/register", createUser);
 
 router.post("/login", loginUser);
 
-router.get("/:id", authenticateJWT, getUser);
+router.get("/:id", getUser);
 
-router.get("/", authenticateJWT, getUser);
+router.get("/", getUser);
 
 router.post("/refresh", refreshAccessToken);
 
 router.post("/logout", logout);
 
-router.patch("/:id", authenticateJWT, updateUser);
+router.patch("/:id", updateUser);
 
 export default router;
