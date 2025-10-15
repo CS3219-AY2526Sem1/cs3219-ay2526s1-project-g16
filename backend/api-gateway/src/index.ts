@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import {
     createUserProxy,
 } from './proxy.ts';
-import { authenticateJWT } from './access-control.ts';
+import { authenticateJWT, authorizeJWT } from './access-control.ts';
 
 dotenv.config();
 
@@ -22,12 +22,14 @@ app.use(
 );
 app.use(cookieParser());
 
-// user service routes
+// user service routes - no authentication or authorization required
 const userProxy = createUserProxy();
 app.post('/user/register', userProxy);
 app.post('/user/login', userProxy);
 app.post('/user/refresh', userProxy);
 app.post('/user/logout', userProxy);
+// routes that require authorizeJWT middleware (e.g. protected resources)
+app.patch("/user/:id", authorizeJWT, userProxy);
 // default: all other routes require authenticateJWT middleware
 app.use('/user', authenticateJWT, userProxy);
 
