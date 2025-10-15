@@ -98,18 +98,23 @@ export function MultiMatchMeSelect({
               <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent position="item-aligned" className="bg-accent">
-              {choices.map(({ value, label }, i) => (
-                <SelectItem
-                  key={i}
-                  value={value}
-                  className={cn(
-                    "data-[state=checked]:bg-popover/70 focus:!bg-popover text-3xl transition-colors",
-                    itemClassName,
-                  )}
-                >
-                  {label}
-                </SelectItem>
-              ))}
+              {choices
+                .filter(
+                  (choice) =>
+                    !items.includes(choice.value) || choice.value === value,
+                )
+                .map(({ value, label }, i) => (
+                  <SelectItem
+                    key={i}
+                    value={value}
+                    className={cn(
+                      "data-[state=checked]:bg-popover/70 focus:!bg-popover text-3xl transition-colors",
+                      itemClassName,
+                    )}
+                  >
+                    {label}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
           <CircleX
@@ -126,7 +131,7 @@ export function MultiMatchMeSelect({
         variant="ghost"
         size="icon"
         onClick={() => setItems((prev) => [...prev, ""])}
-        disabled={disabled}
+        disabled={disabled || items.length >= choices.length}
       >
         <CirclePlus className="text-accent-foreground" />
       </Button>
