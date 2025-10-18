@@ -51,10 +51,6 @@ function Home() {
     });
   }
 
-  // if (qnsQuery.isError || langsQuery.isError) {
-  //   toast.error("Failed to load data. Please try again later.");
-  // }
-
   return (
     <main className="mt-24 flex w-full flex-col items-center justify-center gap-8">
       <h1 className="text-7xl font-semibold">Match Me</h1>
