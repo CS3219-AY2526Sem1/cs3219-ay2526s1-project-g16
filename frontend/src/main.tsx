@@ -21,7 +21,6 @@ const router = createRouter({
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
 });
-
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
   interface Register {

@@ -1,9 +1,9 @@
-import cors from "cors";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import userRoutes from "./routes/user-routes.ts";
 import { initConnection } from "./model/prisma-client.ts";
+import userRoutes from "./routes/user-routes.ts";
 
 dotenv.config();
 
