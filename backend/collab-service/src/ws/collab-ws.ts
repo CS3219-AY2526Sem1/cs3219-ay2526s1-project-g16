@@ -3,6 +3,7 @@ import { parse as parseUrl } from "url";
 import jwt from "jsonwebtoken";
 import { prisma } from "../model/collab-model.ts";
 import { createRequire } from "module";
+import 'dotenv/config';
 
 const require = createRequire(import.meta.url);
 const httpProxy = require("http-proxy");
@@ -28,7 +29,7 @@ async function authorize(roomId: string, user: { id: string; username?: string }
   });
 }
 
-const TARGET_WS = "ws://127.0.0.1:1234";
+const TARGET_WS =  process.env.YWS_TARGET || "ws://127.0.0.1:1234";
 const proxy = httpProxy.createProxyServer({ target: TARGET_WS, ws: true, changeOrigin: true });
 
 // log proxy errors (e.g., upstream not running)
@@ -37,6 +38,7 @@ proxy.on("error", (err: any, _req: any, socket: any) => {
   try { socket?.destroy(); } catch {}
 });
 
+/* This is a proxy gateway that hooks on to ser*/
 export function installCollabWsProxy(server: HttpServer) {
   server.on("upgrade", async (req, socket, head) => {
     try {
@@ -83,43 +85,3 @@ export function installCollabWsProxy(server: HttpServer) {
   });
 }
 
-/* CLIENT SIDE CODE */
-//import * as Y from 'yjs'
-// import { WebsocketProvider } from 'y-websocket'
-
-// // Your collab gateway URL (it proxies to the upstream server)
-// const serverUrl = 'ws://localhost:3009/collab/ws'
-// const roomId = '2'                // same as your CollabSession.id
-// const token  = '<ACCESS_JWT>'     // from your app auth
-
-// const doc = new Y.Doc()
-// const provider = new WebsocketProvider(serverUrl, roomId, doc, {
-//   params: { token },              // your gateway checks this
-// })
-
-// // Example shared text
-// const ytext = doc.getText('code')
-
-// // bind ytext to your editor (Monaco/CodeMirror) or a textarea
-// ytext.observe(() => {
-//   console.log('Doc content:', ytext.toString())
-// })
-
-/* 
-EXPLANATION FOR CLIENT SIDE CODE
-
- Clients connects to ws://localhost:3009/collab/ws/2?token=...
-
- The actual Yjs document lives in the clients:
-Each client creates a new Y.Doc().
-They connect with new WebsocketProvider(<your /collab/ws>, roomId, doc, { params: { token } }).
-They operate on shared structures (e.g. doc.getText("code")).
-The upstream @y/websocket-server just relays/persists updates; it doesn’t hold your business logic.
- Yjs merges concurrent edits and propagates them. You don’t write any “insert/delete op” logic
-
- docName = roomId
- doc.getText("code or whatever") --> to operate
- docName = your roomId; params.token = the same JWT string.
-
-
-*/

@@ -1,0 +1,59 @@
+<!doctype html><meta charset="utf-8">
+<title>Yjs Test</title>
+<style>textarea{width:100%;height:60vh;font:14px ui-monospace,monospace}</style>
+<textarea id="ta" placeholder="Type here"></textarea>
+<div id="status"></div>
+<script type="module">
+  import * as Y from 'https://esm.sh/yjs';
+  import { HocuspocusProvider } from 'https://esm.sh/@hocuspocus/provider@3.2.5';
+
+  const params = new URLSearchParams(location.search);
+  const roomId = params.get('roomId') || 'room-123';
+  const token  = params.get('token');
+  if (!token) throw new Error('Missing &token');
+
+  const url = `ws://localhost:3009/collab/ws/${encodeURIComponent(roomId)}?token=${encodeURIComponent(token)}`;
+
+  const provider = new HocuspocusProvider({ url, name: roomId });
+  const ytext = provider.document.getText('code');
+  const ta = document.getElementById('ta');
+
+  // Initialize textarea from Y
+  ta.value = ytext.toString();
+
+  let applyingRemote = false;
+
+  // Apply remote changes -> textarea
+  ytext.observe(() => {
+    applyingRemote = true;
+    ta.value = ytext.toString();
+    applyingRemote = false;
+  });
+
+  // Compute minimal edit (prefix/suffix trick)
+  function applyLocalChange(oldStr, newStr) {
+    // find common prefix
+    let start = 0;
+    while (start < oldStr.length && start < newStr.length && oldStr[start] === newStr[start]) start++;
+    // find common suffix
+    let endOld = oldStr.length - 1;
+    let endNew = newStr.length - 1;
+    while (endOld >= start && endNew >= start && oldStr[endOld] === newStr[endNew]) { endOld--; endNew--; }
+
+    // delete the middle of old
+    if (endOld >= start) ytext.delete(start, endOld - start + 1);
+    // insert the middle of new
+    if (endNew >= start) ytext.insert(start, newStr.slice(start, endNew + 1));
+  }
+
+  ta.addEventListener('input', () => {
+    if (applyingRemote) return; // ignore echo from remote updates
+    const oldVal = ytext.toString();
+    const newVal = ta.value;
+    if (oldVal === newVal) return;
+    applyLocalChange(oldVal, newVal);
+  });
+
+  provider.on('status', e => document.getElementById('status').textContent = e.status);
+</script>
+
