@@ -10,19 +10,17 @@ datasource db {
 }
 
 model MatchTicket {
-  id     String  @id @default(cuid())
-  userId String  @unique
-
+  id             String   @id @default(cuid())
+  userId         String   @unique
   languagePref   String[] @default([])
   difficultyPref String[] @default([])
   topicPref      String[] @default([])
-
-  status    String
-  partnerId String?
-  roomId    String?
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status         String
+  partnerId      String?
+  roomId         String?
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([status, expiresAt, createdAt])
   @@index([roomId])
@@ -37,11 +35,10 @@ model MatchedUsers {
   language   String
   difficulty String
   topic      String
-  roomId     String
+  roomId     String   @unique
   questionId String?
   matchedAt  DateTime @default(now())
 
-  @@unique([roomId])
   @@map("matchedusers")
   @@schema("matchservice")
 }
