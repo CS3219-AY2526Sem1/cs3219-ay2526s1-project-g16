@@ -2,7 +2,7 @@ name: matching-service → GCE VM
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "add_matching_service" ]
     paths:
       - 'backend/matching-service/**'
       - '.github/workflows/deploy-matching.yml'
