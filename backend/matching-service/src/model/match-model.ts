@@ -22,18 +22,19 @@ export type MatchStatus = typeof MATCH_STATUS[keyof typeof MATCH_STATUS];
 
 export type MatchInput = {
   userId: string;
-  languageIn: string[];
-  difficultyIn: string[];
-  topicIn: string[];
-  ttlMs?: number;
+  languageIn?: string | string[] | undefined;
+  difficultyIn?: string | string[] | undefined;
+  topicIn?: string | string[] | undefined;
+  ttlMs?: number | undefined;
 };
 
+
 export type MatchResult =
-  | { status: "matched"; roomId: string; partnerId: string }
-  | { status: "queued"; expiresAt: Date }
-  | { status: "cancelled" }
-  | { status: "not_found" }
-  | { status: "already_matched"; roomId: string; partnerId: string };
+  | { status: "matched"; roomId: string; partnerId: string; startedTime?: Date; expiresAt?: Date }
+  | { status: "queued";  expiresAt: Date; startedTime?: Date }
+  | { status: "cancelled"; startedTime?: Date }
+  | { status: "not_found"; startedTime?: Date }
+  | { status: "already_matched"; roomId: string; partnerId: string; startedTime?: Date; expiresAt?: Date };
 
 //=========================== CORE ===========================
 export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
@@ -113,7 +114,8 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
       const chosenLanguage  = pickOne(overlap.language);
       const chosenDifficulty = pickOne(overlap.difficulty);
       const chosenTopic     = pickOne(overlap.topic);
-
+      const questionId = getQuestionId("chosenTopic", "chosenLanguage", "chosenDifficulty");
+      
       console.log("[match] chosen overlap", {
         userId,
         partnerId: partner.userId,
@@ -155,6 +157,17 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
         },
       });
 
+      await writeMatchedUsers(tx, {
+        userAId: userId,
+        userBId: partner.userId,
+        roomId: roomId,
+        language: chosenLanguage!,
+        difficulty: chosenDifficulty!,
+        topic: chosenTopic!,
+        questionId: questionId,
+        matchedAt: new Date(),
+      });
+
       return { status: "matched", roomId, partnerId: partner.userId, language: chosenLanguage, topic: chosenTopic, difficulty: chosenDifficulty };
     }
 
@@ -182,50 +195,51 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
   }, { timeout: 8000 });
 }
 
-
-
 export async function getStatus(userId: string): Promise<MatchResult> {
   const ticket = await prisma.matchTicket.findUnique({
     where: { userId },
-    select: { status: true, roomId: true, partnerId: true, expiresAt: true },
+    select: { status: true, roomId: true, partnerId: true, expiresAt: true, createdAt: true },
   });
 
-  if (!ticket) 
-    return { status: "not_found" };
+  if (!ticket)
+    return { status: "not_found", startedTime: new Date() };
+
+  const startedTime = ticket.createdAt;
 
   switch (ticket.status) {
     case MATCH_STATUS.CANCELLED:
-      return { status: "cancelled" };
+      return { status: "cancelled", startedTime };
 
     case MATCH_STATUS.MATCHED:
       if (ticket.roomId && ticket.partnerId) {
-        return { status: "matched", roomId: ticket.roomId, partnerId: ticket.partnerId };
+        return {
+          status: "matched",
+          roomId: ticket.roomId,
+          partnerId: ticket.partnerId,
+          startedTime,
+          expiresAt: ticket.expiresAt,
+        };
       }
-      return { status: "not_found" };
+      return { status: "not_found", startedTime };
 
     case MATCH_STATUS.QUEUED: {
       const { count } = await prisma.matchTicket.updateMany({
-        where: {
-          userId,
-          status: MATCH_STATUS.QUEUED,
-          expiresAt: { lt: new Date() },
-        },
+        where: { userId, status: MATCH_STATUS.QUEUED, expiresAt: { lt: new Date() } },
         data: { status: MATCH_STATUS.EXPIRED },
       });
 
       if (count > 0) {
-        return { status: "not_found" };
+        return { status: "not_found", startedTime };
       }
 
-      return { status: "queued", expiresAt: ticket.expiresAt };
+      return { status: "queued", expiresAt: ticket.expiresAt, startedTime };
     }
 
     case MATCH_STATUS.EXPIRED:
     default:
-      return { status: "not_found" };
+      return { status: "not_found", startedTime };
   }
 }
-
 
 export async function cancel(userId: string): Promise<MatchResult> {
   const t = await prisma.matchTicket.findUnique({ where: { userId } });
@@ -320,4 +334,57 @@ function hasOverlap(a: string[], b?: string[] | null): boolean {
 
   const bSet = new Set(normalizedB);
   return a.some((item) => bSet.has(normalize(item)));
+}
+
+function getQuestionId(topic?: string, language?: string, difficulty?: string): string {
+  return "123";
+}
+
+export async function writeMatchedUsers(
+  tx: Prisma.TransactionClient | PrismaClient,
+  args: {
+    userAId: string;
+    userBId: string;
+    roomId: string;
+    language: string;
+    difficulty: string;
+    topic: string;
+    questionId?: string | null;
+    matchedAt?: Date; // optional; defaults to now()
+  }
+) {
+  const {
+    userAId,
+    userBId,
+    roomId,
+    language,
+    difficulty,
+    topic,
+    questionId = null,
+    matchedAt,
+  } = args;
+
+  return tx.matchedUsers.upsert({
+    where: { roomId }, // @@unique([roomId])
+    create: {
+      userAId,
+      userBId,
+      roomId,
+      language,
+      difficulty,
+      topic,
+      questionId,
+      ...(matchedAt ? { matchedAt } : {}), // otherwise defaults to now()
+    },
+    update: {
+      // keep it idempotent; update fields in case you want to overwrite
+      userAId,
+      userBId,
+      language,
+      difficulty,
+      topic,
+      questionId,
+      ...(matchedAt ? { matchedAt } : {}),
+    },
+  });
 }

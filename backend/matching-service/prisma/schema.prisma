@@ -29,3 +29,19 @@ model MatchTicket {
   @@map("matchticket")
   @@schema("matchservice")
 }
+
+model MatchedUsers {
+  id         String   @id @default(cuid())
+  userAId    String
+  userBId    String
+  language   String
+  difficulty String
+  topic      String
+  roomId     String
+  questionId String?
+  matchedAt  DateTime @default(now())
+
+  @@unique([roomId])
+  @@map("matchedusers")
+  @@schema("matchservice")
+}
