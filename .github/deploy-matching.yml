@@ -1,0 +1,28 @@
+name: matching-service → GCE VM
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'services/matching-service/**'
+      - '.github/workflows/deploy-matching.yml'
+  workflow_dispatch:
+
+env:
+  REGION: asia-southeast1
+  PROJECT_ID: agile-charger-472814-j0
+  REPO: my-docker-repo
+  IMAGE: matching-service
+  CONTEXT_DIR: services/matching-service
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+
