@@ -1,5 +1,6 @@
 import express from "express";
-import { requestMatch, getMatchStatus, cancelMatch, subscribeMatchSSE } from "../controller/match-controller.ts";
+import { requestMatch, getMatchStatus, cancelMatch } from "../controller/match-controller.ts";
+import { subscribeMatchSSE } from "../controller/match-SSE.ts";
 // import { authenticateJWT } from "shared-middleware";
 
 const router = express.Router();

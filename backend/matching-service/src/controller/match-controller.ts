@@ -2,7 +2,6 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { enqueueOrMatch, getStatus, cancel } from "../model/match-model.ts";
 
-// single string or string[]
 const strOrArray = z
   .union([z.string().min(1), z.array(z.string().min(1))])
   .optional();
@@ -10,17 +9,10 @@ const strOrArray = z
 export const ticketSchema = z.object({
   userId: z.string().min(1),
 
-  // single-choice identity fields
-  language: z.string().min(1).transform((s) => s.toLowerCase()),
-  difficulty: z.string().min(1).transform((s) => s.toLowerCase()),
-  topic: z.string().min(1).transform((s) => s.toLowerCase()),
-
-  // optional acceptable sets
   languageIn: strOrArray,
   difficultyIn: strOrArray,
   topicIn: strOrArray,
 
-  // optional TTL
   ttlMs: z.number().int().positive().max(10 * 60 * 1000).optional(),
 });
 
@@ -54,7 +46,6 @@ function writeSSE(res: Response, event: string, data: any, id?: string) {
 }
 
 export async function subscribeMatchSSE(req: Request, res: Response) {
-  // 1. Validate userId
   let userId: string;
   try {
     userId = z.string().min(1).parse(req.params.userId);
@@ -63,22 +54,31 @@ export async function subscribeMatchSSE(req: Request, res: Response) {
     return;
   }
 
-  // 2. Set SSE headers
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
-  res.flushHeaders?.(); // optional, if compression is used
+  res.flushHeaders?.();
 
-  // 3. Send initial connection
   res.write(": connected\n\n");
 
   const heartbeat = setInterval(() => {
     res.write(`event: heartbeat\ndata: {}\n\n`);
   }, 15000);
 
-  const start = Date.now();
-  const timeout = 5 * 60 * 1000; // 5 minutes
+  const SSE_WINDOW_MS = 30 * 1000; 
   let lastSig = "";
+
+  let startedAt = new Date();
+  try {
+    const initial = await getStatus(userId);
+    if (initial?.startedTime) {
+      startedAt = new Date(initial.startedTime);
+    }
+    writeSSE(res, "status", initial ?? { status: "not_found" });
+    lastSig = JSON.stringify(initial ?? {});
+  } catch {
+    // if we can't fetch status initially, still proceed; poller will handle.
+  }
 
   async function poll() {
     try {
@@ -89,6 +89,10 @@ export async function subscribeMatchSSE(req: Request, res: Response) {
         writeSSE(res, "status", status ?? { status: "not_found" });
       }
 
+      if ((status as any)?.startedTime && !Number.isNaN(Date.parse((status as any).startedTime as any))) {
+        startedAt = new Date((status as any).startedTime as any);
+      }
+
       const s = status?.status;
       if (s === "matched" || s === "cancelled" || s === "not_found") {
         writeSSE(res, s, status);
@@ -96,12 +100,19 @@ export async function subscribeMatchSSE(req: Request, res: Response) {
         return;
       }
 
-      if (Date.now() - start > timeout) {
-        writeSSE(res, "timeout", { message: "No match found" });
+      const expiresAt = (status as any)?.expiresAt ? new Date((status as any).expiresAt as any) : null;
+      if (expiresAt && Date.now() >= +expiresAt) {
+        writeSSE(res, "timeout", { message: "Ticket expired", startedTime: startedAt, expiresAt });
         cleanup();
         return;
       }
-    } catch (err) {
+
+      if (Date.now() - +startedAt > SSE_WINDOW_MS) {
+        writeSSE(res, "timeout", { message: "No match found", startedTime: startedAt });
+        cleanup();
+        return;
+      }
+    } catch {
       writeSSE(res, "error", { message: "poll failed" });
     }
 
