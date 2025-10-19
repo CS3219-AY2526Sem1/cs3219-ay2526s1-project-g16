@@ -1,7 +1,7 @@
 name: matching-service → GCE VM
 
 on:
-  push:
+  pull_request:
     branches: [ "main", "add_matching_service" ]
     paths:
       - 'backend/matching-service/**'
