@@ -10,7 +10,15 @@ import { startMatchSweeper } from "./controller/match-sweeper.ts";
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// Use cors to allow frontend URL to access this app.
+app.use(
+  cors({
+    origin: "http://localhost:8000", // frontend url
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
 
 const port = Number(process.env.PORT) || 3000;
