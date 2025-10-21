@@ -1,19 +1,19 @@
-name: matching-service → GCE VM
+name: user-service → GCE VM
 
 on:
   push:
-    branches: [ "master", "add_matching_service" ]
+    branches: [ "master" ]
     paths:
-      - 'backend/matching-service/**'
-      - '.github/workflows/deploy-matching.yml'
+      - 'backend/user-service/**'
+      - '.github/workflows/deploy-userservice.yml'
   workflow_dispatch:
 
 env:
   REGION: asia-southeast1
   PROJECT_ID: agile-charger-472814-j0
   REPO: my-docker-repo
-  IMAGE: matching-service
-  CONTEXT_DIR: services/matching-service
+  IMAGE: user-service
+  CONTEXT_DIR: services/user-service
 
 jobs:
   build-and-push:
