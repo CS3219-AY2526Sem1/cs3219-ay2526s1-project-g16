@@ -8,5 +8,8 @@
     "globals": "^16.4.0",
     "prettier": "^3.6.2",
     "typescript-eslint": "^8.44.0"
+  },
+  "dependencies": {
+    "shared-middleware": "^1.0.6"
   }
 }
