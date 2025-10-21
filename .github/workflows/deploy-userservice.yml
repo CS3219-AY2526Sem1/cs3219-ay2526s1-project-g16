@@ -68,8 +68,8 @@ jobs:
           port: ${{ secrets.VM_PORT || 22 }}
           script: |
             set -e
-            cd ~/app
-            gcloud secrets versions access latest --secret=app-env > matching.env
+            cd ~/app/user
+            gcloud secrets versions access latest --secret=app-env > user.env
             docker compose pull
             docker compose up -d
             docker image prune -f --filter "until=24h"
