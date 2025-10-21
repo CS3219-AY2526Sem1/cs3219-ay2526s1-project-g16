@@ -2,7 +2,12 @@ name: matching-service → GCE VM
 
 on:
   push:
-    branches: [ "master", "add_matching_service" ]
+    branches: [ "master" ]
+    paths:
+      - 'backend/matching-service/**'
+      - '.github/workflows/deploy-matching.yml'
+  pull_request:
+    branches: [ "master" ]
     paths:
       - 'backend/matching-service/**'
       - '.github/workflows/deploy-matching.yml'
@@ -13,7 +18,7 @@ env:
   PROJECT_ID: agile-charger-472814-j0
   REPO: my-docker-repo
   IMAGE: matching-service
-  CONTEXT_DIR: services/matching-service
+  CONTEXT_DIR: backend/matching-service
 
 jobs:
   build-and-push:
@@ -21,8 +26,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
+          install_components: 'beta'
 
+      - name: Configure Docker for GAR
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & tag image
+        run: |
+          IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}
+          docker build "${{ env.CONTEXT_DIR }}" \
+            -t $IMAGE_URI:sha-${{ github.sha }} \
+            -t $IMAGE_URI:latest
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+      - name: Push image
+        if: github.event_name != 'pull_request'   # 👈 skip pushing during PR tests
+        run: |
+          docker push $IMAGE_URI:sha-${{ github.sha }}
+          docker push $IMAGE_URI:latest 
+
+  deploy:
+    needs: build-and-push
+    if: github.event_name != 'pull_request'       # 👈 only deploy after merge/main/manual run
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH to VM & deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_PORT || 22 }}
+          script: |
+            set -e
+            cd ~/appD
+            docker compose pull
+            docker compose up -d
+            docker image prune -f --filter "until=24h"
