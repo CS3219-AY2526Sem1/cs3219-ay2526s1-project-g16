@@ -49,14 +49,14 @@ jobs:
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Push image
-        if: github.event_name != 'pull_request'   # 👈 skip pushing during PR tests
+        if: github.event_name != 'pull_request'
         run: |
           docker push $IMAGE_URI:sha-${{ github.sha }}
           docker push $IMAGE_URI:latest 
 
   deploy:
     needs: build-and-push
-    if: github.event_name != 'pull_request'       # 👈 only deploy after merge/main/manual run
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: SSH to VM & deploy
