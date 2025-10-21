@@ -22,8 +22,15 @@ import {
   REFRESH_TOKEN_MAX_AGE,
   formatUserResponse,
 } from "./controller-utils.ts";
-import type { MyJwtPayload } from "shared-middleware";
 import { Prisma } from "../generated/prisma/index.js";
+import type { JwtPayload } from "jsonwebtoken";
+
+interface CustomJwtPayload extends JwtPayload {
+  sub: string;
+  username: string;
+  email: string;
+  isAdmin: boolean;
+}
 
 const ACCESS_SECRET = process.env.ACCESS_JWT_SECRET || "access-secret";
 const REFRESH_SECRET = process.env.REFRESH_JWT_SECRET || "refresh-secret";
@@ -142,7 +149,9 @@ export async function getUser(req: Request, res: Response): Promise<void> {
     // );
     let userId = req.params.id;
     if (!userId) {
-      userId = req.user?.id;
+      const accessToken = req.cookies?.jwt_access_token;
+      const decoded = jwt.verify(accessToken, ACCESS_SECRET) as CustomJwtPayload;
+      userId = decoded.sub;
     }
     const existingUser = await _getUserById(userId as string);
     if (!existingUser) {
@@ -188,9 +197,9 @@ export async function refreshAccessToken(
     }
 
     // Verify refresh token
-    const decoded = jwt.verify(refreshToken, REFRESH_SECRET) as MyJwtPayload;
+    const decoded = jwt.verify(refreshToken, REFRESH_SECRET) as CustomJwtPayload;
 
-    const existingUser = await _getUserByUsername(decoded.username);
+    const existingUser = await _getUserById(decoded.sub);
     if (!existingUser) {
       res.status(401).json({ error: "Refresh does not match user" });
       return;
@@ -229,10 +238,10 @@ export async function refreshAccessToken(
 
 export async function updateUser(req: Request, res: Response): Promise<void> {
   try {
-    const userId = req.user?.id;
     const modifiedUserId = req.params.id;
-    if (!userId || userId != modifiedUserId) {
-      res.status(401).json({ error: "Unauthorized to modify this user" });
+
+    if (!modifiedUserId) {
+      res.status(400).json({ error: "User not found." });
       return;
     }
 
@@ -243,7 +252,7 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const existingUser = await _getUserById(userId);
+    const existingUser = await _getUserById(modifiedUserId);
     if (!existingUser) {
       res.status(404).json({ error: "User not found." });
       return;
@@ -282,7 +291,7 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
       }
 
       const existingUserByEmail = await _getUserByEmail(newEmail);
-      if (existingUserByEmail && existingUserByEmail.id !== userId) {
+      if (existingUserByEmail && existingUserByEmail.id !== modifiedUserId) {
         res.status(409).json({ error: "Email is already in use." });
         return;
       }
@@ -299,7 +308,7 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
       }
 
       const existingUserByUsername = await _getUserByUsername(newUsername);
-      if (existingUserByUsername && existingUserByUsername.id !== userId) {
+      if (existingUserByUsername && existingUserByUsername.id !== modifiedUserId) {
         res.status(409).json({ error: "Username is already taken." });
         return;
       }
@@ -313,7 +322,7 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const updatedUser = await _updateUser(userId, updateData);
+    const updatedUser = await _updateUser(modifiedUserId, updateData);
     res.status(200).json(formatUserResponse(updatedUser));
   } catch (err) {
     res.status(500).json({ error: "Internal server error", detail: err });

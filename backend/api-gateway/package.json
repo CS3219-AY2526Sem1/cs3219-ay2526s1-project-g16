@@ -1,18 +1,17 @@
 {
-  "name": "user-service",
+  "name": "api-gateway",
   "version": "1.0.0",
   "description": "",
   "license": "ISC",
   "author": "",
   "type": "module",
-  "main": "server.ts",
+  "main": "index.ts",
   "scripts": {
     "dev": "nodemon --config nodemon.json",
-    "start": "node src/server.ts",
+    "start": "node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix && prettier --write .",
-    "postinstall": "npx prisma generate"
+    "lint:fix": "eslint . --fix && prettier --write ."
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -21,31 +20,20 @@
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
+    "@types/http-proxy-middleware": "^0.19.3",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/lodash": "^4.17.20",
-    "@types/nanoid": "^2.1.0",
-    "@types/node": "^24.5.2",
-    "@types/pino": "^7.0.4",
-    "prisma": "^6.16.2",
+    "@types/node": "^24.7.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@prisma/client": "^6.16.2",
-    "bcrypt": "^6.0.0",
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.2",
     "config": "^4.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "dayjs": "^1.11.18",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
-    "lodash": "^4.17.21",
-    "nanoid": "^5.1.5",
-    "nodemon": "^3.1.10",
-    "pino": "^9.10.0",
-    "pino-pretty": "^13.1.1",
-    "reflect-metadata": "^0.2.2"
+    "nodemon": "^3.1.10"
   }
 }

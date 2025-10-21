@@ -24,7 +24,7 @@ app.use(express.json());
 const port = process.env.PORT || 3001;
 
 // Add attempt routes
-app.use("/attempt", attemptRoutes);
+app.use("/", attemptRoutes);
 
 initConnection()
   .then(() => {
