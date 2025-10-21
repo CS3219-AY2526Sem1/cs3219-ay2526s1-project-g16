@@ -68,7 +68,7 @@ jobs:
           port: ${{ secrets.VM_PORT || 22 }}
           script: |
             set -e
-            cd ~/appD
+            cd ~/app
             gcloud secrets versions access latest --secret=app-env > .env
             docker compose pull
             docker compose up -d
