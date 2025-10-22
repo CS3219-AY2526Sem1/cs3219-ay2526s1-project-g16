@@ -1,24 +1,24 @@
-name: matching-service → GCE VM
+name: user-service → GCE VM
 
 on:
   push:
     branches: [ "master" ]
     paths:
-      - 'backend/matching-service/**'
-      - '.github/workflows/deploy-matching.yml'
+      - 'backend/user-service/**'
+      - '.github/workflows/deploy-userservice.yml'
   pull_request:
     branches: [ "master" ]
     paths:
-      - 'backend/matching-service/**'
-      - '.github/workflows/deploy-matching.yml'
+      - 'backend/user-service/**'
+      - '.github/workflows/deploy-userservice.yml'
   workflow_dispatch:
 
 env:
   REGION: asia-southeast1
   PROJECT_ID: agile-charger-472814-j0
   REPO: my-docker-repo
-  IMAGE: matching-service
-  CONTEXT_DIR: backend/matching-service
+  IMAGE: user-service
+  CONTEXT_DIR: backend/user-service
 
 jobs:
   build-and-push:
@@ -68,8 +68,8 @@ jobs:
           port: ${{ secrets.VM_PORT || 22 }}
           script: |
             set -e
-            cd ~/app/matching
-            gcloud secrets versions access latest --secret=app-env > matching.env
+            cd ~/app/user
+            gcloud secrets versions access latest --secret=app-env > user.env
             docker compose pull
             docker compose up -d
             docker image prune -f --filter "until=24h"
