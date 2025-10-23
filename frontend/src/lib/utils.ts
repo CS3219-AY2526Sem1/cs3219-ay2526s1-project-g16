@@ -18,7 +18,7 @@ export async function authFetch(
 
   if (response.status === 401 && retry) {
     // try refreshing token once
-    const refresh = await fetch(`${USER_SERVICE_URL}/user/refresh`, {
+    const refresh = await fetch(`${USER_SERVICE_URL}/refresh`, {
       method: "POST",
       credentials: "include",
     });

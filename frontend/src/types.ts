@@ -35,3 +35,36 @@ export type Question = {
   exampleIO?: { input: string; output: string }[];
   topics: { topic: Topic }[];
 };
+
+export type ListLanguagesResponse = {
+  count: number;
+  languages: Language[];
+};
+
+export type Language = {
+  id: number;
+  name: string;
+};
+
+type MatchResult =
+  | {
+      status: "matched";
+      roomId: string;
+      partnerId: string;
+      startedTime?: Date;
+      expiresAt?: Date;
+    }
+  | { status: "queued"; expiresAt: Date; startedTime?: Date }
+  | { status: "cancelled"; startedTime?: Date }
+  | { status: "not_found"; startedTime?: Date }
+  | {
+      status: "already_matched";
+      roomId: string;
+      partnerId: string;
+      startedTime?: Date;
+      expiresAt?: Date;
+    };
+
+export type MatchResponse = MatchResult & {
+  subscribeUrl: string;
+};
