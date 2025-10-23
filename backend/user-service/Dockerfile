@@ -24,9 +24,9 @@ COPY . .
 # -----------------------------
 ENV NODE_ENV=production
 
-EXPOSE 3001
+EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3001/healthz || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/healthz || exit 1
 
 # -----------------------------
 # 4. Start app (tsx)

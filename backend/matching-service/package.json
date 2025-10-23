@@ -13,8 +13,8 @@
         "test": "echo \"Error: no test specified\" && exit 1",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix && prettier --write .",
-        "postinstall": "npx prisma generate",
-        "migrate:deploy": "prisma migrate deploy",
+        "postinstall": "",
+        "migrate:deploy": "",
         "start:prod": "npm run migrate:deploy && tsx src/server.ts"
     },
     "devDependencies": {

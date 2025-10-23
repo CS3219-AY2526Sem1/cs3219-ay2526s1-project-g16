@@ -1,5 +1,4 @@
 import express from "express";
-import { authenticateJWT } from "shared-middleware";
 import {
   createSession,
   joinSession,
@@ -10,14 +9,14 @@ import {
 
 const router = express.Router();
 
-router.post("/sessions", authenticateJWT, createSession);
+router.post("/sessions", createSession);
 
-router.post("/sessions/:id/end", authenticateJWT, endSession);
+router.post("/sessions/:id/end", endSession);
 
-router.get("/sessions/:id", authenticateJWT, getSession);
+router.get("/sessions/:id", getSession);
 
-router.post("/sessions/:id/join", authenticateJWT, joinSession);
+router.post("/sessions/:id/join", joinSession);
 
-router.post("/sessions/:id/leave", authenticateJWT, leaveSession);
+router.post("/sessions/:id/leave", leaveSession);
 
 export default router;

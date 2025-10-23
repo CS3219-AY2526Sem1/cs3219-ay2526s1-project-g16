@@ -21,7 +21,7 @@ app.use(
 
 app.use(express.json());
 
-const port = Number(process.env.PORT) || 3000;
+const port = Number(process.env.PORT) || 3001;
 
 app.use("/match", matchRoutes);
 
