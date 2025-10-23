@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["collab"] // Only look at tables in the "collab" namespace
+}
+
+model CollabSession {
+  id           String        @id @default(uuid()) // Jasper throws me a room ID? 
+  topic        String
+  difficulty   String        
+  questionId   String?
+  status       SessionStatus @default(ACTIVE)
+  expiresAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  participants Participant[]                     
+  
+  @@map("sessions")
+  @@schema("collab")
+}
+
+// Unsure whether to make a class for this or use user
+// Users can be multiple participants for multiple sessions?
+model Participant {
+  id        String   @id @default(uuid())
+  sessionId String
+  userId    String
+  username  String
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+
+  session   CollabSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId]) // one active row per user per session (we’ll upsert on join)
+  @@map("participants")
+  @@schema("collab")
+}
+
+
+enum SessionStatus {
+  ACTIVE
+  ENDED
+  TIMED_OUT
+
+  @@schema("collab")
+}
