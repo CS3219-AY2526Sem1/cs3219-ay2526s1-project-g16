@@ -35,3 +35,13 @@ export type Question = {
   exampleIO?: { input: string; output: string }[];
   topics: { topic: Topic }[];
 };
+
+export type ListLanguagesResponse = {
+  count: number;
+  languages: Language[];
+};
+
+export type Language = {
+  id: number;
+  name: string;
+};
