@@ -6,11 +6,12 @@ import {
   questionDifficulties,
   type ListLanguagesResponse,
   type ListTopicsResponse,
+  type MatchResponse,
 } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -21,7 +22,7 @@ function Home() {
   const [questionTopics, setQuestionTopics] = useState<string[]>([""]);
   const [difficultyLevels, setDifficultyLevels] = useState<string[]>([""]);
   const [languages, setLanguages] = useState<string[]>([""]);
-  const [isFindingMatch, setIsFindingMatch] = useState(false);
+  const [subscribeUrl, setSubscribeUrl] = useState<string | null>(null);
 
   const { auth } = Route.useRouteContext();
   const { user } = auth;
@@ -49,7 +50,7 @@ function Home() {
   });
 
   const findMatchMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<MatchResponse> => {
       const res = await authFetch(`${MATCH_SERVICE_URL}/match/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -65,8 +66,8 @@ function Home() {
       }
       return res.json();
     },
-    onSuccess: () => {
-      setIsFindingMatch(true);
+    onSuccess: (data) => {
+      setSubscribeUrl(data.subscribeUrl);
     },
   });
 
@@ -85,9 +86,28 @@ function Home() {
       return res.json();
     },
     onSuccess: () => {
-      setIsFindingMatch(false);
+      setSubscribeUrl(null);
     },
   });
+
+  useEffect(() => {
+    let eventSource: EventSource;
+    if (subscribeUrl) {
+      eventSource = new EventSource(subscribeUrl);
+      eventSource.addEventListener("status", (event) => {
+        const data: MatchResponse = JSON.parse(event.data);
+        if (data.status === "not_found") {
+          toast.error("Matching has timed out! Please try again.");
+          setSubscribeUrl(null);
+        }
+      });
+    }
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [subscribeUrl]);
 
   // at most toast once
   const queryIsError = topicsQuery.isError || langsQuery.isError;
@@ -99,7 +119,7 @@ function Home() {
 
   return (
     <main className="mt-24 flex w-full flex-col items-center justify-center gap-8">
-      {isFindingMatch ? (
+      {subscribeUrl ? (
         <h1 className="after:animate-ellipsis flex text-7xl font-semibold text-pink-800/70 after:block after:w-0">
           Searching
         </h1>
@@ -127,7 +147,7 @@ function Home() {
               itemClassName="text-blue-900/80 focus:text-blue-500 data-[state=checked]:text-blue-500 [&_svg]:!text-blue-800/50"
               items={questionTopics}
               setItems={setQuestionTopics}
-              disabled={queryIsError}
+              disabled={queryIsError || !!subscribeUrl}
             />
 
             <span className="text-right">at difficulty level</span>
@@ -141,7 +161,7 @@ function Home() {
               itemClassName="text-orange-900/80 focus:text-orange-500 data-[state=checked]:text-orange-500 [&_svg]:!text-orange-800/50"
               items={difficultyLevels}
               setItems={setDifficultyLevels}
-              disabled={queryIsError}
+              disabled={queryIsError || !!subscribeUrl}
             />
 
             <span className="text-right">using</span>
@@ -157,11 +177,11 @@ function Home() {
               itemClassName="text-red-900/80 focus:text-red-500 data-[state=checked]:text-red-500 [&_svg]:!text-red-800/50"
               items={languages}
               setItems={setLanguages}
-              disabled={queryIsError}
+              disabled={queryIsError || !!subscribeUrl}
             />
           </div>
 
-          {isFindingMatch ? (
+          {subscribeUrl ? (
             <Button
               size="lg"
               className="bg-red-500 hover:bg-red-600"
