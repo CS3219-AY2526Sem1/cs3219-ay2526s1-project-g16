@@ -18,7 +18,7 @@ export default defineConfig([
   {
     files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     plugins: { js },
-    extends: ["js/recommended", "react/jsx-runtime"],
+    extends: ["js/recommended"],
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -32,6 +32,7 @@ export default defineConfig([
 
   // React rules
   pluginReact.configs.flat.recommended,
+  pluginReact.configs.flat["jsx-runtime"],
 
   // Prettier plugin (runs Prettier as a rule)
   {
