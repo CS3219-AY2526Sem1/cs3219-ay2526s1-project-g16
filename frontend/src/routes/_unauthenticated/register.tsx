@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { Eye, EyeClosed } from "lucide-react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import z from "zod";
 
@@ -86,32 +88,69 @@ function Register() {
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <Input placeholder="Password" type="password" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const [isReveal, setIsReveal] = useState(false);
+              return (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <div className="flex relative items-center">
+                    <FormControl>
+                      <Input
+                        placeholder="Password"
+                        type={isReveal ? "text" : "password"}
+                        {...field}
+                      />
+                    </FormControl>
+                    <Button
+                      className="text-neutral-600 absolute right-0 hover:bg-transparent"
+                      onClick={() => setIsReveal(!isReveal)}
+                      type="button"
+                      variant="ghost"
+                    >
+                      {isReveal ? <EyeClosed size={20} /> : <Eye size={20} />}
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
+
           <FormField
             control={form.control}
             name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm Password</FormLabel>
-                <FormControl>
-                  <Input placeholder="Password" type="password" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const [isReveal, setIsReveal] = useState(false);
+              return (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <div className="flex relative items-center">
+                    <FormControl>
+                      <Input
+                        placeholder="Password"
+                        type={isReveal ? "text" : "password"}
+                        {...field}
+                      />
+                    </FormControl>
+                    <Button
+                      className="text-neutral-600 absolute right-0 hover:bg-transparent"
+                      onClick={() => setIsReveal(!isReveal)}
+                      type="button"
+                      variant="ghost"
+                    >
+                      {isReveal ? <EyeClosed size={20} /> : <Eye size={20} />}
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
+
           <Button>Register</Button>
         </form>
 
