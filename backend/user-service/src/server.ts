@@ -1,19 +1,21 @@
-import cors from "cors";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import userRoutes from "./routes/user-routes.ts";
 import { initConnection } from "./model/prisma-client.ts";
+import userRoutes from "./routes/user-routes.ts";
 
 dotenv.config();
 
 const app = express();
 
 // Use cors to allow any origin to access this app.
-app.use(cors({
-  origin: 'http://localhost:8000', // frontend url
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: "http://localhost:8000", // frontend url
+    credentials: true,
+  }),
+);
 
 app.use(cookieParser());
 
@@ -22,7 +24,7 @@ app.use(express.json());
 const port = process.env.PORT || 3000;
 
 // Add user routes
-app.use("/user", userRoutes);
+app.use("/", userRoutes);
 
 initConnection()
   .then(() => {

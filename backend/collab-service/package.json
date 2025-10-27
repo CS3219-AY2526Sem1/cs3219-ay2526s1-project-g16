@@ -59,7 +59,6 @@
     "pino": "^9.10.0",
     "pino-pretty": "^13.1.1",
     "reflect-metadata": "^0.2.2",
-    "shared-middleware": "file:../shared-middleware",
     "socket.io": "^4.8.1",
     "ws": "^8.18.3",
     "y-websocket": "^3.0.0",

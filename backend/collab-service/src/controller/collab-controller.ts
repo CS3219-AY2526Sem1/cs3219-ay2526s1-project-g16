@@ -9,12 +9,13 @@ import {
   sweepExpiredSessions,
   seedDocIfEmpty
 } from "../model/collab-model.ts";
+import { decodeAccessToken } from "./collab-utils.ts";
 
 // GET /collab/session/active
 export async function getMyActiveSession(req: Request, res: Response) {
   try {
-    const me = req.user!; // remove this soon - change to cookies
-    const session = await findMyActiveSession(me.id);
+    const decoded = decodeAccessToken(req.cookies.jwt_access_token);
+    const session = await findMyActiveSession(decoded.sub); //decoded.sub == user id
     return res.status(200).json({ data: session });
   } catch {
     return res.status(500).json({ error: "Internal server error" });
@@ -71,7 +72,6 @@ export async function endSession(req: Request, res: Response) {
   try {
     const {id} = req.params;
     if (!id) return res.status(400).json({ error: "id is required" });
-    const user = req.user!;
     
     const session = await _getSession(id);
     if (!session) return res.status(404).json({ error: "Session not found" });
@@ -88,10 +88,11 @@ export async function joinSession(req: Request, res: Response) {
   try {
     const { id } = req.params;
     if (!id) return res.status(400).json({ error: "id is required" });
-    const user = req.user!;
-    if (!user.username) return res.status(400).json({ error: "username is required" });
+    
+    const decoded = decodeAccessToken(req.cookies.jwt_access_token);
+    if (!decoded.username) return res.status(400).json({ error: "username is required" });
 
-    const session = await _joinSession(id, { id: user.id, username: user.username });
+    const session = await _joinSession(id, { id: decoded.sub, username: decoded.username });
     if (!session) return res.status(404).json({ error: "Session not found or not active" });
     return res.status(200).json({ data: session });
   } catch {
@@ -104,9 +105,9 @@ export async function leaveSession(req: Request, res: Response) {
   try {
     const { id } = req.params;
     if (!id) return res.status(400).json({ error: "id is required" });
-    const user = req.user!;
+    const decoded = decodeAccessToken(req.cookies.jwt_access_token);
 
-    await _leaveSession(id, user.id);
+    await _leaveSession(id, decoded.sub);
     return res.status(200).json({ data: { left: true } });
   } catch {
     return res.status(500).json({ error: "Internal server error" });

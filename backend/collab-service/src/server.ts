@@ -17,7 +17,7 @@ app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:3009', 'http://127.0.0.1:3000', 'http://127.0.0.1:3009'], 
 }));
 app.use(express.json());
-app.use("/collab", collabRoutes);
+app.use("/", collabRoutes);
 
 
 
