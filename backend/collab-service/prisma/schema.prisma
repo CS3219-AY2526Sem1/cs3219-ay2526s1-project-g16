@@ -12,7 +12,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["collab"] // Only look at tables in the "collab" namespace
+  schemas  = ["collab","ydocs"] // Only look at tables in the "collab" namespace
 }
 
 model CollabSession {
@@ -46,6 +46,15 @@ model Participant {
   @@unique([sessionId, userId]) // one active row per user per session (we’ll upsert on join)
   @@map("participants")
   @@schema("collab")
+}
+
+model YDoc {
+  name       String   @id
+  data       Bytes
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("ydocs")
+  @@schema("ydocs")
 }
 
 

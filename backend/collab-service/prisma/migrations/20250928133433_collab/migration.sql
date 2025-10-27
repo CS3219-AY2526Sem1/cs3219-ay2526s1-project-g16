@@ -2,7 +2,7 @@
 CREATE SCHEMA IF NOT EXISTS "collab";
 
 -- CreateEnum
-CREATE TYPE "collab"."SessionStatus" AS ENUM ('ACTIVE', 'ENDED', 'TIMED_OUT');
+ CREATE TYPE "collab"."SessionStatus" AS ENUM ('ACTIVE', 'ENDED', 'TIMED_OUT');
 
 -- CreateTable
 CREATE TABLE "collab"."sessions" (

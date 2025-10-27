@@ -5,8 +5,31 @@ import {
   getSession as _getSession,
   joinSession as _joinSession,
   leaveSession as _leaveSession,
+  findMyActiveSession,
+  sweepExpiredSessions,
+  seedDocIfEmpty
 } from "../model/collab-model.ts";
 import { decodeAccessToken } from "./collab-utils.ts";
+
+// GET /collab/session/active
+export async function getMyActiveSession(req: Request, res: Response) {
+  try {
+    const decoded = decodeAccessToken(req.cookies.jwt_access_token);
+    const session = await findMyActiveSession(decoded.sub); //decoded.sub == user id
+    return res.status(200).json({ data: session });
+  } catch {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function runSweeperNow(req: Request, res: Response) {
+  try {
+    const out = await sweepExpiredSessions();
+    return res.status(200).json({ data: out });
+  } catch (e) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
 
 // POST /collab/sessions
 export async function createSession(req: Request, res: Response) {
@@ -15,6 +38,9 @@ export async function createSession(req: Request, res: Response) {
     if (!topic || !difficulty) {
       return res.status(400).json({ error: "topic and difficulty are required" });
     }
+    // query from alicia
+
+    // set up actual collab service
     const session = await _createSession(
       roomId,
       topic, 
@@ -22,8 +48,21 @@ export async function createSession(req: Request, res: Response) {
       questionId,
       expiresAt ? new Date(expiresAt) : undefined
     );
+
+    // seed the ydoc - not implemented yet, ignore for now
+    // const id = session.id;
+    // await seedDocIfEmpty(id, [
+    //   `// Room: ${id}`,
+    //   `// Topic: ${topic} | Difficulty: ${difficulty}`,
+    //   ``,
+    //   `function demo(){ console.log("Hello PeerPrep"); }`,
+    //   `demo();`,
+    //   ``,
+    // ].join('\n'));
+    
     return res.status(201).json({ data: session });
   } catch (e) {
+    console.error("Error creating session:", e); 
     return res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -36,8 +75,6 @@ export async function endSession(req: Request, res: Response) {
     
     const session = await _getSession(id);
     if (!session) return res.status(404).json({ error: "Session not found" });
-
-    // Maybe add in rule to limit who can end session
 
     const ended = await _endSession(id);
     return res.status(200).json({ data: ended });

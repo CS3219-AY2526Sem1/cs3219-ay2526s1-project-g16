@@ -4,10 +4,14 @@ import {
   joinSession,
   leaveSession,
   endSession,
-  getSession
+  getSession,
+  getMyActiveSession,
+  runSweeperNow
 } from "../controller/collab-controller.ts";
 
 const router = express.Router();
+
+router.get("/sessions/active", getMyActiveSession);
 
 router.post("/sessions", createSession);
 
@@ -18,5 +22,7 @@ router.get("/sessions/:id", getSession);
 router.post("/sessions/:id/join", joinSession);
 
 router.post("/sessions/:id/leave", leaveSession);
+
+router.post("/sessions/sweeper/run", runSweeperNow);
 
 export default router;
