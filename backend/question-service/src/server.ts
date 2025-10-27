@@ -1,20 +1,22 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { initConnection } from "./model/question-model.ts";
+import languageRoutes from "./routes/languages-routes.ts";
 import questionRoutes from "./routes/question-routes.ts";
 import topicRoutes from "./routes/topic-routes.ts";
-import languageRoutes from "./routes/topic-routes.ts";
-import { initConnection } from "./model/question-model.ts";
 
 dotenv.config();
 
 const app = express();
 
 // Use cors to allow frontend URL to access this app.
-app.use(cors({
-  origin: 'http://localhost:8000', // frontend url
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: "http://localhost:8000", // frontend url
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
 

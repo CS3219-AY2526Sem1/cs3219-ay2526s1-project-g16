@@ -13,6 +13,7 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: ({ context, location }) => {
@@ -32,13 +33,15 @@ function Authenticated() {
   const { auth } = Route.useRouteContext();
   const { user, logout } = auth;
   const navigate = Route.useNavigate();
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   return (
     <>
       <header className="flex items-center justify-between gap-2 border-b p-4 px-6">
         <Link to="/">
           <img src="logo_wordless.png" width={48} height={48} />
         </Link>
-        <DropdownMenu>
+        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger>
             <Avatar className="cursor-pointer">
               <AvatarFallback>{user?.username?.slice(0, 2)}</AvatarFallback>
@@ -49,7 +52,12 @@ function Authenticated() {
             <DropdownMenuSeparator />
             {user?.isAdmin && (
               <DropdownMenuItem>
-                <Link to="/manage-questions">Manage Questions</Link>
+                <Link
+                  to="/manage-questions"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Manage Questions
+                </Link>
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
