@@ -160,8 +160,8 @@ export async function getUser(req: Request, res: Response): Promise<void> {
     }
     res.status(200).json(formatUserResponse(existingUser));
     return;
-  } catch {
-    res.status(500).json({ error: "Internal Server Error" });
+  } catch (err) {
+    res.status(500).json({ error: "Internal Server Error" + err });
     return;
   }
 }
