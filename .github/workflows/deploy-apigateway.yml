@@ -1,4 +1,4 @@
-name: apigateway-service → GCE VM
+name: apigateway → GCE VM
 
 on:
   push:
@@ -17,7 +17,7 @@ env:
   REGION: asia-southeast1
   PROJECT_ID: agile-charger-472814-j0
   REPO: my-docker-repo
-  IMAGE: apigateway-service
+  IMAGE: apigateway
   CONTEXT_DIR: backend/api-gateway
 
 jobs:
