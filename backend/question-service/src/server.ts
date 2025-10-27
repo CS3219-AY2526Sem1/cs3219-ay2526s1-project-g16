@@ -10,12 +10,15 @@ dotenv.config();
 
 const app = express();
 
-// Use cors to allow any origin to access this app.
-app.use(cors());
+// Use cors to allow frontend URL to access this app.
+app.use(cors({
+  origin: 'http://localhost:8000', // frontend url
+  credentials: true
+}));
 
 app.use(express.json());
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3002;
 
 // Add question routes
 app.use("/questions", questionRoutes);

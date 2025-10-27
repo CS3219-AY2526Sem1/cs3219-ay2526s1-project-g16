@@ -7,7 +7,6 @@ import {
   logout,
   updateUser,
 } from "../controller/user-controller.ts";
-import { authenticateJWT } from "shared-middleware";
 
 const router = express.Router();
 
@@ -15,14 +14,14 @@ router.post("/register", createUser);
 
 router.post("/login", loginUser);
 
-router.get("/:id", authenticateJWT, getUser);
+router.get("/:id", getUser);
 
-router.get("/", authenticateJWT, getUser);
+router.get("/", getUser);
 
 router.post("/refresh", refreshAccessToken);
 
 router.post("/logout", logout);
 
-router.patch("/:id", authenticateJWT, updateUser);
+router.patch("/:id", updateUser);
 
 export default router;
