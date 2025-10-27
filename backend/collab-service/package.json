@@ -8,10 +8,11 @@
   "main": "server.ts",
   "scripts": {
     "postinstall": "prisma generate",
-    "dev:api": "nodemon --config nodemon.json",
-    "dev:yws": "nodemon --watch src --ext ts,js --exec \"node -r ts-node/register -r dotenv/config src/yws.ts\"",
+    "dev:api": "nodemon --watch src --ext ts,js --exec \"node --loader ts-node/esm -r dotenv/config src/server.ts\"",
+    "dev:yws":  "nodemon --watch src --ext ts,js --exec \"node --loader ts-node/esm -r dotenv/config src/yws.ts\"",
     "dev": "concurrently -k -n API,YWS npm:dev:api npm:dev:yws",
-    "start": "node src/server.ts",
+    "start": "concurrently -k -n API,YWS npm:dev:api npm:dev:yws",
+    "start:prod": "concurrently -k -n API,YWS npm:dev:api npm:dev:yws",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -60,6 +61,7 @@
     "pino-pretty": "^13.1.1",
     "reflect-metadata": "^0.2.2",
     "socket.io": "^4.8.1",
+    "tsx": "^4.20.6",
     "ws": "^8.18.3",
     "y-websocket": "^3.0.0",
     "yjs": "^13.6.15"
