@@ -5,12 +5,12 @@ on:
     branches: [ "master" ]
     paths:
       - 'backend/question-service/**'
-      - '.github/workflows/deploy-userservice.yml'
+      - '.github/workflows/deploy-question.yml'
   pull_request:
     branches: [ "master" ]
     paths:
       - 'backend/question-service/**'
-      - '.github/workflows/deploy-userservice.yml'
+      - '.github/workflows/deploy-question.yml'
   workflow_dispatch:
 
 env:
