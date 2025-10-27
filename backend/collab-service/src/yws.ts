@@ -1,4 +1,4 @@
-// Y.js server
+// Y-websocket server
 
 import 'dotenv/config';
 import { Server } from '@hocuspocus/server';
@@ -10,11 +10,12 @@ import { prisma } from './model/collab-model.ts'; // your existing PrismaClient 
 const YWS_PORT = Number(process.env.YWS_PORT || 1234);
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
-
 async function main() {
 
   const server = new Server({
     port: YWS_PORT,
+    debounce: 2000,     // saves 2 seconds after stop typing
+    maxDebounce: 5000,  // forced saves every 5 seconds
     extensions: [
       new RedisExtension({ host: "127.0.0.1", port: 6379 }), // awareness/broadcast via Redis - pub/sub
       new Database({
@@ -31,6 +32,8 @@ async function main() {
         },
       }),
     ],
+
+
   });
 
   await server.listen();

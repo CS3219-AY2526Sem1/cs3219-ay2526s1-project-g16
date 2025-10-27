@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import { createServer } from "http";
 import collabRoutes from "./routes/collab-routes.ts";
-import { initConnection } from "./model/collab-model.ts";
+import { sweepExpiredSessions, initConnection, ensureDbGuards } from "./model/collab-model.ts";
 import { installCollabWsProxy } from "./ws/collab-ws.ts";
 import cookieParser from "cookie-parser"; 
 
@@ -23,11 +23,22 @@ app.use("/collab", collabRoutes);
 
 const httpServer = createServer(app);
 
-initConnection().then(() => {
+initConnection().then(async () => {
+    await ensureDbGuards();
+
     installCollabWsProxy(httpServer);
     httpServer.listen(process.env.PORT || 3009, () => {
-      console.log(`Collab HTTP+WS gateway on port 3009 ; upstream y-websocket on 1234}`);
+      console.log(`Collab HTTP+WS gateway on port 3009 ; upstream y-websocket on 1234`);
     });
+
+    setInterval(async () => { // session sweeper that runs every minute
+      try {
+        const res = await sweepExpiredSessions();
+        if (res.expired > 0) console.log(`[sweeper] timed out ${res.expired} sessions`);
+      } catch (e) {
+        console.error("[sweeper] error:", e);
+      }
+    }, 6000_000);  // reset to 60000 (every min) after demo
   })
   .catch((err) => {
     console.error(err);

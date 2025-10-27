@@ -1,59 +1,94 @@
 <!doctype html><meta charset="utf-8">
-<title>Yjs Test</title>
-<style>textarea{width:100%;height:60vh;font:14px ui-monospace,monospace}</style>
-<textarea id="ta" placeholder="Type here"></textarea>
+<title>PeerPrep — Monaco + Yjs</title>
+<style>
+  body { margin:12px; font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif }
+  #wrap { display:flex; gap:12px }
+  #editor { flex:1; height:70vh; border:1px solid #222 }
+  #question { width:38%; height:70vh; border:1px solid #222; padding:8px; overflow:auto; white-space:pre-wrap }
+  #status { margin-top:8px; font-size:12px; color:#666 }
+  h3 { margin:0 0 8px 0; font-size:14px }
+</style>
+
+<div id="wrap">
+  <div id="editor"></div>
+  <div id="question"></div>
+</div>
 <div id="status"></div>
+
+<!-- Monaco AMD loader -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js"></script>
+<script>require.config({ paths:{vs:'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs'} });</script>
+
 <script type="module">
   import * as Y from 'https://esm.sh/yjs';
   import { HocuspocusProvider } from 'https://esm.sh/@hocuspocus/provider@3.2.5';
+  import { MonacoBinding } from 'https://esm.sh/y-monaco';
 
-  const params = new URLSearchParams(location.search);
-  const roomId = params.get('roomId') || 'room-123';
-  const token  = params.get('token');
-  if (!token) throw new Error('Missing &token');
+  // --- params ---
+  const p = new URLSearchParams(location.search);
+  const roomId = p.get('roomId') || 'room-123';
+  const token  = p.get('token');
+  const lang   = p.get('lang')  || 'javascript';
+  const qtitle = p.get('qtitle') || 'Sample Question';
+  const qbody  = p.get('q') || `Given an array of integers, return indices of the two numbers such that they add up to a target.`;
 
+  if (!token) throw new Error('Missing ?token');
+
+  // --- question pane ---
+  const qEl = document.getElementById('question');
+  qEl.innerHTML = `<h3>${qtitle}</h3>${qbody}`;
+
+  // --- yjs + provider ( WS gateway) ---
   const url = `ws://localhost:3009/collab/ws/${encodeURIComponent(roomId)}?token=${encodeURIComponent(token)}`;
-
   const provider = new HocuspocusProvider({ url, name: roomId });
-  const ytext = provider.document.getText('code');
-  const ta = document.getElementById('ta');
 
-  // Initialize textarea from Y
-  ta.value = ytext.toString();
+  // Use the provider's single Y.Doc
+  const ydoc  = provider.document;         
+  const ytext = ydoc.getText('code');
+  const meta  = ydoc.getMap('meta');   
 
-  let applyingRemote = false;
+  // --- connection status ---
+  const statusEl = document.getElementById('status');
+  provider.on('status', e => statusEl.textContent = `status: ${e.status} to room ${roomId}`);
 
-  // Apply remote changes -> textarea
-  ytext.observe(() => {
-    applyingRemote = true;
-    ta.value = ytext.toString();
-    applyingRemote = false;
+
+  // --- monaco via AMD, then bind (let Yjs drive content) ---
+  window.require(['vs/editor/editor.main'], () => {
+    const editor = monaco.editor.create(document.getElementById('editor'), {
+      language: lang,
+      theme: 'vs-dark',
+      automaticLayout: true,
+      minimap: { enabled: false },
+      tabSize: 2,
+      insertSpaces: true,
+    });
+    new MonacoBinding(ytext, editor.getModel(), new Set([editor]), provider.awareness);
   });
 
-  // Compute minimal edit (prefix/suffix trick)
-  function applyLocalChange(oldStr, newStr) {
-    // find common prefix
-    let start = 0;
-    while (start < oldStr.length && start < newStr.length && oldStr[start] === newStr[start]) start++;
-    // find common suffix
-    let endOld = oldStr.length - 1;
-    let endNew = newStr.length - 1;
-    while (endOld >= start && endNew >= start && oldStr[endOld] === newStr[endNew]) { endOld--; endNew--; }
-
-    // delete the middle of old
-    if (endOld >= start) ytext.delete(start, endOld - start + 1);
-    // insert the middle of new
-    if (endNew >= start) ytext.insert(start, newStr.slice(start, endNew + 1));
+   // --- poll for session status (every 2s) ---
+  async function checkSessionStatus() {
+    try {
+      const resp = await fetch(`http://localhost:3009/collab/sessions/${encodeURIComponent(roomId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) return; // ignore transient errors
+      const { data } = await resp.json();
+      if (!data || data.status !== 'ACTIVE') {
+        statusEl.textContent = `session ended (${data?.status ?? 'unknown'})`;
+        try { provider.destroy(); } catch {}
+        if (editorRef) editorRef.updateOptions({ readOnly: true });
+        clearInterval(poller);
+        // Optional: banner
+        const qEl = document.getElementById('question');
+        qEl.insertAdjacentHTML('afterbegin',
+          `<div style="background:#331; color:#fbd; padding:8px; margin:0 0 8px 0; border:1px solid #666;">
+             This session has ended. Editing is disabled.
+           </div>`);
+      }
+    } catch {}
   }
+  const poller = setInterval(checkSessionStatus, 2000);
 
-  ta.addEventListener('input', () => {
-    if (applyingRemote) return; // ignore echo from remote updates
-    const oldVal = ytext.toString();
-    const newVal = ta.value;
-    if (oldVal === newVal) return;
-    applyLocalChange(oldVal, newVal);
-  });
-
-  provider.on('status', e => document.getElementById('status').textContent = e.status);
+  // Clean up on unload (helps presence)
+  window.addEventListener('beforeunload', () => { try { provider.destroy(); } catch {} });
 </script>
-

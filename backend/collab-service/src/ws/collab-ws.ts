@@ -17,16 +17,49 @@ function verifyAccessToken(token: string) {
 }
 
 async function authorize(roomId: string, user: { id: string; username?: string }) {
-  const session = await prisma.collabSession.findUnique({ where: { id: roomId } });
-  
-  if (!session) throw new Error("SESSION_NOT_FOUND");
-  if (session.status !== "ACTIVE") throw new Error("SESSION_NOT_ACTIVE");
+  await prisma.$transaction(async (tx) => {
+    // Serialize joins per room (prevents race where two newcomers slip in)
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${roomId}))`;
 
-  await prisma.participant.upsert({
-    where: { sessionId_userId: { sessionId: roomId, userId: user.id } },
-    update: { leftAt: null, username: user.username ?? "" },
-    create: { sessionId: roomId, userId: user.id, username: user.username ?? "" },
-  });
+    // Check if session is active
+    const session = await tx.collabSession.findUnique({ where: { id: roomId } });
+    if (!session) throw new Error("SESSION_NOT_FOUND");
+    if (session.status !== "ACTIVE") throw new Error("SESSION_NOT_ACTIVE");
+    if (session.expiresAt && session.expiresAt.getTime() < Date.now()) throw new Error("SESSION_EXPIRED");
+
+    // Block if user is active in ANOTHER session (leftAt IS NULL & status ACTIVE) - at max 1 session
+    const otherActive = await tx.participant.findFirst({
+      where: {
+        userId: user.id,
+        leftAt: null,
+        NOT: { sessionId: roomId },
+        session: { status: "ACTIVE" },
+      },
+      select: { sessionId: true },
+    });
+    if (otherActive) {
+      const err: any = new Error("USER_ALREADY_IN_ACTIVE_SESSION");
+      err.sessionId = otherActive.sessionId;
+      throw err;
+    }
+
+    // Check if room is full
+    const existing = await tx.participant.findUnique({
+      where: { sessionId_userId: { sessionId: roomId, userId: user.id } },
+    });
+    const totalParticipants = await tx.participant.count({
+      where: { sessionId: roomId },
+    });
+    if (!existing && totalParticipants >= 2) throw new Error("ROOM_FULL");
+
+    // Participant joins the room
+    await tx.participant.upsert({
+      where: { sessionId_userId: { sessionId: roomId, userId: user.id } },
+      update: { leftAt: null, username: user.username ?? "" },
+      create: { sessionId: roomId, userId: user.id, username: user.username ?? "" },
+    });
+  }, { isolationLevel: 'Serializable' }); 
 }
 
 const TARGET_WS =  process.env.YWS_TARGET || "ws://127.0.0.1:1234";

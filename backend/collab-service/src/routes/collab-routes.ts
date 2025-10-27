@@ -5,10 +5,14 @@ import {
   joinSession,
   leaveSession,
   endSession,
-  getSession
+  getSession,
+  getMyActiveSession,
+  runSweeperNow
 } from "../controller/collab-controller.ts";
 
 const router = express.Router();
+
+router.get("/sessions/active",authenticateJWT, getMyActiveSession);
 
 router.post("/sessions", authenticateJWT, createSession);
 
@@ -19,5 +23,7 @@ router.get("/sessions/:id", authenticateJWT, getSession);
 router.post("/sessions/:id/join", authenticateJWT, joinSession);
 
 router.post("/sessions/:id/leave", authenticateJWT, leaveSession);
+
+router.post("/sessions/sweeper/run", runSweeperNow);
 
 export default router;
