@@ -6,6 +6,7 @@ import {
   listQuestions,
   updateQuestion,
   deleteQuestionById,
+  hardDeleteQuestionById,
   type ListQuestionsParams,
   type UpdateQuestionInput,
 } from "../model/question-model.ts";
@@ -109,4 +110,15 @@ export const deleteQuestionHandler = async (req: Request, res: Response) => {
 
   await deleteQuestionById(id);
   res.status(204).send();
+};
+
+/**
+ * Permanently delete a question (hard delete).
+ */
+export const hardDeleteQuestionHandler = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+
+  const deleted = await hardDeleteQuestionById(id);
+  res.status(200).json({ message: "Question permanently deleted", deleted });
 };
