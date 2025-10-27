@@ -11,6 +11,8 @@
     "module": "nodenext", // Use 'nodenext' for best compatibility
     "moduleResolution": "nodenext",
     "types": ["node"],
+    "typeRoots": ["./types", "./node_modules/@types"], // For y-websocket custom module declaration 
+    "esModuleInterop": true,
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
