@@ -4,20 +4,22 @@ import 'dotenv/config';
 import { Server } from '@hocuspocus/server';
 import { Redis as RedisExtension } from '@hocuspocus/extension-redis';
 import { Database } from '@hocuspocus/extension-database';
-
+import { Redis } from 'ioredis'; 
 import { prisma } from './model/collab-model.ts'; // your existing PrismaClient export
 
 const YWS_PORT = Number(process.env.YWS_PORT || 1234);
-const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const REDIS_URL = process.env.REDIS_URL || '';
 
 async function main() {
+  const redis = new Redis(REDIS_URL);
 
   const server = new Server({
     port: YWS_PORT,
     debounce: 2000,     // saves 2 seconds after stop typing
     maxDebounce: 5000,  // forced saves every 5 seconds
+
     extensions: [
-      new RedisExtension({ host: "127.0.0.1", port: 6379 }), // awareness/broadcast via Redis - pub/sub
+      new RedisExtension({ redis }), // awareness/broadcast via Redis - pub/sub  host: "127.0.0.1", port: 6379
       new Database({
         fetch: async ({ documentName }) => {
           const row = await prisma.yDoc.findUnique({ where: { name: documentName }});
