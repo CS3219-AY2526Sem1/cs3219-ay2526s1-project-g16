@@ -7,7 +7,8 @@
     "start": "vite --port 8000",
     "build": "vite build && tsc",
     "serve": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
