@@ -275,7 +275,7 @@ function toArray<T>(value?: T | T[]): T[] {
 }
 
 function normalize(value: string): string {
-  return value.trim().toLowerCase();
+  return value.trim();
 }
 
 function toNormalizedSet(values?: string[] | null): string[] {
