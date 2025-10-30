@@ -38,7 +38,10 @@ export async function requestMatch(req: Request, res: Response) {
     if (err?.code === "ALREADY_IN_ACTIVE_SESSION") {
       return res.status(409).json({ error: "User already in an active session", session: err.session ?? null });
     }
-    return res.status(500).json({ error: "Internal error" });
+    return res.status(500).json({
+      error: "Internal error",
+      message: err.message || "Unknown error"
+    });
   }
 }
 
