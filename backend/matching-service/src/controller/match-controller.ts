@@ -172,13 +172,20 @@ type EnqueueResult =
     };
 
 export async function checkIfUserInMatch(req: Request, _res: Response): Promise<void> {
-  const userId = req.body?.userId ?? req.query?.userId;
-  if (!userId || typeof userId !== "string") return;
-
-  const url = `${COLLAB_BASE}/sessions/active?userId=${encodeURIComponent(userId)}`;
+  const url = `${COLLAB_BASE}/sessions/active`;
 
   try {
-    const active = await httpJSON<CollabSession | null>(url, { method: "GET" });
+    const cookieHeader = Object.entries(req.cookies ?? {})
+      .map(([k, v]) => `${k}=${v}`)
+      .join("; ");
+
+    const active = await httpJSON<CollabSession | null>(url, {
+      method: "GET",
+      headers: {
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      },
+    });
+
     if (active && active.status === "ACTIVE") {
       const e: any = new Error("User already in active session");
       e.code = "ALREADY_IN_ACTIVE_SESSION";
@@ -191,6 +198,7 @@ export async function checkIfUserInMatch(req: Request, _res: Response): Promise<
     }
   }
 }
+
 
 export async function createUserMatch(
   req: Request,
