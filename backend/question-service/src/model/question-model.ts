@@ -49,10 +49,10 @@ export const createQuestion = async (data: {
   });
 };
 
-/* Read a Question by ID*/
+/* Read a Question by ID (active qns only) */
 export const getQuestionById = async (id: number) => {
-  return prisma.question.findUnique({
-    where: { id },
+  return prisma.question.findFirst({
+    where: { id, deletedAt: null },
     include: { topics: { include: { topic: true } } },
   });
 };
@@ -77,6 +77,7 @@ export const listQuestions = async (params: ListQuestionsParams = {}) => {
   } = params;
 
   const where: Prisma.QuestionWhereInput = {
+    deletedAt: null,
     AND: [
       search
         ? {
@@ -134,88 +135,108 @@ export type UpdateQuestionInput = {
   exampleIO?: { input: string; output: string }[];
   constraints?: string[];
   solutionOutline?: string;
-  metadata?: Prisma.InputJsonValue | null; // pass null to clear
-  topicNames?: string[]; // optional—if present, replaces all topics
+  metadata?: Prisma.InputJsonValue | null;
+  topicNames?: string[];
 };
 
-export const updateQuestion = async (id: number, data: UpdateQuestionInput) => {
-  // Build update data for scalar/JSON fields
-  const updateData: Prisma.QuestionUpdateInput = {
-    ...(data.title !== undefined && { title: data.title }),
-    ...(data.statement !== undefined && { statement: data.statement }),
-    ...(data.difficulty !== undefined && { difficulty: data.difficulty }),
-    ...(data.solutionOutline !== undefined && {
-      solutionOutline: data.solutionOutline,
-    }),
-    ...(data.exampleIO !== undefined && {
-      exampleIO:
-        (data.exampleIO as unknown as Prisma.InputJsonValue) ??
-        (Prisma.JsonNull as Prisma.NullableJsonNullValueInput),
-    }),
-    ...(data.constraints !== undefined && {
-      constraints:
-        (data.constraints as unknown as Prisma.InputJsonValue) ??
-        (Prisma.JsonNull as Prisma.NullableJsonNullValueInput),
-    }),
-    ...(data.metadata !== undefined && {
-      metadata:
-        data.metadata ?? (Prisma.JsonNull as Prisma.NullableJsonNullValueInput),
-    }),
-  };
-
-  // If topicNames provided, replace join rows in a transaction
-  if (data.topicNames) {
-    const topicNames = [
-      ...new Set(data.topicNames.map((n) => n.trim())),
-    ].filter(Boolean);
-
-    return prisma.$transaction(async (tx) => {
-      // Ensure the question exists (throws if not)
-      await tx.question.findUniqueOrThrow({ where: { id } });
-
-      // Remove current mappings
-      await tx.questionTopic.deleteMany({ where: { questionId: id } });
-
-      // Connect or create each topic, then create relation rows
-      if (topicNames.length) {
-        for (const name of topicNames) {
-          await tx.questionTopic.create({
-            data: {
-              question: { connect: { id } },
-              topic: {
-                connectOrCreate: {
-                  where: { name },
-                  create: { name },
-                },
-              },
-            },
-          });
-        }
-      }
-
-      const updated = await tx.question.update({
-        where: { id },
-        data: updateData,
-        include: { topics: { include: { topic: true } } },
-      });
-
-      return updated;
+export const updateQuestion = async (oldId: number, patch: UpdateQuestionInput) => {
+  return prisma.$transaction(async (tx) => {
+    const old = await tx.question.findFirst({
+      where: { id: oldId, deletedAt: null },
+      include: { topics: { include: { topic: true } } },
     });
-  }
+    if (!old) throw new Error("Question not found or already archived");
 
-  // No topic replacement requested
-  return prisma.question.update({
-    where: { id },
-    data: updateData,
-    include: { topics: { include: { topic: true } } },
+    const names =
+      patch.topicNames !== undefined
+        ? [...new Set(patch.topicNames.map((n) => n.trim()))].filter(Boolean)
+        : undefined; // undefined => copy old, [] => clear
+
+    const newQ = await tx.question.create({
+      data: {
+        title: patch.title ?? old.title,
+        statement: patch.statement ?? old.statement,
+        difficulty: (patch.difficulty ?? old.difficulty) as any,
+        constraints:
+          (patch.constraints as unknown as Prisma.InputJsonValue) ??
+          ((old.constraints as unknown as Prisma.InputJsonValue) ??
+            (Prisma.JsonNull as Prisma.NullableJsonNullValueInput)),
+        exampleIO:
+          (patch.exampleIO as unknown as Prisma.InputJsonValue) ??
+          ((old.exampleIO as unknown as Prisma.InputJsonValue) ??
+            (Prisma.JsonNull as Prisma.NullableJsonNullValueInput)),
+        solutionOutline: patch.solutionOutline ?? old.solutionOutline,
+        metadata:
+          patch.metadata !== undefined
+            ? (patch.metadata as Prisma.InputJsonValue)
+            : (old.metadata as Prisma.InputJsonValue) ??
+              (Prisma.JsonNull as Prisma.NullableJsonNullValueInput),
+        topics: {
+          create:
+            names !== undefined
+              ?
+                names.map((name) => ({
+                  topic: {
+                    connectOrCreate: {
+                      where: { name },
+                      create: { name },
+                    },
+                  },
+                }))
+              : 
+                old.topics.map((qt) => ({ topic: { connect: { id: qt.topic.id } } })),
+        },
+      },
+      include: { topics: { include: { topic: true } } },
+    });
+
+    await tx.question.update({
+      where: { id: old.id },
+      data: { deletedAt: new Date() },
+    });
+
+    return newQ;
   });
 };
 
+
 /**
- * Delete question by Id.
- * Because of the joint table, we delete those mappings first to avoid referential constraint errors.
+ * Soft delete a question by ID.
+ * - Marks the question as archived by setting `deletedAt`.
+ * - Keeps question_topic rows intact (history preserved).
+ * - Throws if the question doesn't exist or is already deleted.
  */
 export const deleteQuestionById = async (id: number) => {
+  return prisma.$transaction(async (tx) => {
+    // 1) Ensure the question exists AND is not already soft-deleted
+    const exists = await tx.question.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!exists) {
+      throw new Error("Question not found or already deleted");
+    }
+
+    // 2) Soft delete: set deletedAt (do NOT remove join rows)
+    const deleted = await tx.question.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+      include: { topics: { include: { topic: true } } },
+    });
+
+    // 3) Optionally: you could trigger a background cleanup of orphan topics
+    //    (only if no active questions reference them). Not done here.
+
+    return deleted;
+  });
+};
+
+
+/**
+ * HARD Delete question by Id.
+ * Because of the joint table, we delete those mappings first to avoid referential constraint errors.
+ */
+export const hardDeleteQuestionById = async (id: number) => {
   return prisma.$transaction(async (tx) => {
     // Ensure it exists (throws if not)
     await tx.question.findUniqueOrThrow({ where: { id } });

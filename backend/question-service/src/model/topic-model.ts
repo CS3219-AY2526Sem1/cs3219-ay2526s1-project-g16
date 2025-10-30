@@ -12,9 +12,15 @@ export const initConnection = async (): Promise<void> => {
   }
 };
 
+/* returns all active topics only */
 export const getAllTopics = async () => {
   try {
     const topics = await prisma.topic.findMany({
+      where: {
+      questions: {
+        some: { question: { deletedAt: null } },
+      },
+    },
       orderBy: { name: "asc" },
     });
     return topics;
@@ -23,3 +29,23 @@ export const getAllTopics = async () => {
     throw error;
   }
 };
+
+/**
+ * HARD Delete topics by Id 
+ * Because of the joint table, we delete those mappings first to avoid referential constraint errors.
+ */
+export const hardDeleteTopicById = async (id: number) => {
+  return prisma.$transaction(async (tx) => {
+    await tx.topic.findUniqueOrThrow({ where: { id } });
+
+    // Remove join rows
+    await tx.questionTopic.deleteMany({ where: { topicId: id } });
+
+    const deleted = await tx.topic.delete({
+      where: { id },
+    });
+
+    return deleted;
+  });
+};
+
