@@ -134,7 +134,7 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
         const chosenLanguage = pickOne(overlap.language) ?? "unspecified";
         const chosenDifficulty = pickOne(overlap.difficulty) ?? "unspecified";
         const chosenTopic = pickOne(overlap.topic) ?? "unspecified";
-        const questionId = getQuestionId(chosenTopic, chosenLanguage, chosenDifficulty);
+        const chosenQuestionId = getQuestionId(chosenTopic, chosenLanguage, chosenDifficulty);
 
         console.log("[match] chosen overlap", {
           userId,
@@ -142,6 +142,7 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
           language: chosenLanguage,
           difficulty: chosenDifficulty,
           topic: chosenTopic,
+          questionId: chosenQuestionId,
         });
 
         await writeMatchedUsers(tx, {
@@ -151,7 +152,7 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
           language: chosenLanguage,
           difficulty: chosenDifficulty,
           topic: chosenTopic,
-          questionId,
+          questionId: chosenQuestionId,
           matchedAt: new Date(),
         });
 
@@ -339,7 +340,7 @@ export async function writeMatchedUsers(
     language: string;
     difficulty: string;
     topic: string;
-    questionId?: string | null;
+    questionId: string;
     matchedAt?: Date;
   }
 ) {
