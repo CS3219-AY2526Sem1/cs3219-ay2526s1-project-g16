@@ -310,7 +310,7 @@ export async function getQuestionId(
   if (language) params.append("language", language);
 
   try {
-    const response = await axios.get(`${baseURL}/questions`, { params });
+    const response = await axios.get(`${baseURL}/api/questions`, { params });
 
     const questions = response.data;
     if (!Array.isArray(questions) || questions.length === 0) {
