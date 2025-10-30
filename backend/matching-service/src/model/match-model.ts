@@ -303,23 +303,27 @@ export async function getQuestionId(
   difficulty?: string
 ): Promise<string> {
   const baseURL = "http://question:3002";
-  const params = new URLSearchParams();
+  const params: Record<string, string> = {};
 
-  if (difficulty) params.append("difficulty", difficulty);
-  if (topic) params.append("topicNames", topic);
-  // if (language) params.append("language", language);
-  console.log("PARAMS: " + params)
+  if (difficulty) params["difficulty"] = difficulty;
+  if (topic) params["topicNames"] = topic;
+  // if (language) params["language"] = language;
+
+  console.log("PARAMS:", params);
+
   try {
     const response = await axios.get(`${baseURL}/api/questions`, { params });
-    console.log("response: " + response)
-    const questions = response.data;
-    if (!Array.isArray(questions) || questions.length === 0) {
+
+    console.log("Response received:", response.data.items);
+
+    const ids = response.data.items.map((item: any) => item.id);
+
+    if (!Array.isArray(ids) || ids.length === 0) {
       throw new Error("No question found for the given filters");
     }
 
-    // Return the first matching question's ID (or choose random if needed)
-    console.log("Got QuestionID");
-    return String(questions[0].id);
+    console.log("Got QuestionID:", ids[0]);
+    return String(ids[0]);
   } catch (err: any) {
     console.error("Error fetching question ID:", err.message);
     throw err;
