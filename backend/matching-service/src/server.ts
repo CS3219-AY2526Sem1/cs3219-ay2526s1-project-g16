@@ -39,8 +39,8 @@ app.get("/", (_req, res) => {
       await startMatchSweeper();
     }
 
-    app.listen(port, () => {
-      console.log(`User service is running at http://localhost:${port}`);
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`Match service listening on 0.0.0.0:${port}`);
     });
   } catch (err) {
     console.error("[bootstrap] failed to start:", err);
