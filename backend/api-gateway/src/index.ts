@@ -8,6 +8,7 @@ import {
     createUserProxy,
 } from './proxy.ts';
 import { authenticateJWT, authorizeJWT } from './access-control.ts';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -23,6 +24,15 @@ app.use(
   })
 );
 app.use(cookieParser());
+
+// Add rate limiter
+const limiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true, // return rate limit info in the RateLimit-* headers
+  message: 'Too many requests from this IP, please try again later.'
+});
+app.use(limiter);
 
 // user service routes - no authentication or authorization required
 const userProxy = createUserProxy();
