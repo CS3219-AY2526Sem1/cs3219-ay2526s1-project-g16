@@ -1,3 +1,4 @@
+import axios from "axios";
 import { PrismaClient, Prisma } from "../generated/prisma/index.js";
 import { nanoid } from "nanoid";
 
@@ -296,9 +297,33 @@ function hasOverlap(a: string[], b?: string[] | null): boolean {
   return a.some((item) => bSet.has(normalize(item)));
 }
 
-function getQuestionId(topic?: string, language?: string, difficulty?: string): string {
-  // TODO
-  return "123";
+export async function getQuestionId(
+  topic?: string,
+  language?: string,
+  difficulty?: string
+): Promise<string> {
+  const baseURL = "http://localhost:3002";
+  const params = new URLSearchParams();
+
+  if (topic) params.append("topicNames", topic);
+  if (difficulty) params.append("difficulty", difficulty);
+  if (language) params.append("language", language);
+
+  try {
+    const response = await axios.get(`${baseURL}/questions`, { params });
+
+    const questions = response.data;
+    if (!Array.isArray(questions) || questions.length === 0) {
+      throw new Error("No question found for the given filters");
+    }
+
+    // Return the first matching question's ID (or choose random if needed)
+    console.log("Got QuestionID");
+    return String(questions[0].id);
+  } catch (err: any) {
+    console.error("Error fetching question ID:", err.message);
+    throw err;
+  }
 }
 
 export async function writeMatchedUsers(
