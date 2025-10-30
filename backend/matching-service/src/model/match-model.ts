@@ -134,7 +134,12 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
         const chosenLanguage = pickOne(overlap.language) ?? "unspecified";
         const chosenDifficulty = pickOne(overlap.difficulty) ?? "unspecified";
         const chosenTopic = pickOne(overlap.topic) ?? "unspecified";
-        const chosenQuestionId = getQuestionId(chosenTopic, chosenLanguage, chosenDifficulty);
+        let chosenQuestionId: string | null = null;
+        try {
+          chosenQuestionId = await getQuestionId(chosenTopic, chosenLanguage, chosenDifficulty);
+        } catch (e) {
+          console.warn("[match] getQuestionId failed; falling back to null:", e);
+        }
 
         console.log("[match] chosen overlap", {
           userId,
