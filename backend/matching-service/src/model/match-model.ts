@@ -302,7 +302,7 @@ export async function getQuestionId(
   language?: string,
   difficulty?: string
 ): Promise<string> {
-  const baseURL = "http://localhost:3002";
+  const baseURL = "http://question:3002";
   const params = new URLSearchParams();
 
   if (topic) params.append("topicNames", topic);

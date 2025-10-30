@@ -3,7 +3,7 @@ import { z } from "zod";
 import { enqueueOrMatch, getStatus, cancel } from "../model/match-model.ts";
 
 const strOrArray = z.union([z.string().min(1), z.array(z.string().min(1))]).optional();
-const COLLAB_BASE = process.env.COLLAB_SERVICE_URL ?? "http://127.0.0.1:3009";
+const COLLAB_BASE = process.env.COLLAB_SERVICE_URL ?? "http://collab:3009";
 
 export const ticketSchema = z.object({
   userId: z.string().min(1),

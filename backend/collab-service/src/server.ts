@@ -27,7 +27,7 @@ initConnection().then(async () => {
     await ensureDbGuards();
 
     installCollabWsProxy(httpServer);
-    httpServer.listen(process.env.PORT || 3009, () => {
+    httpServer.listen(process.env.PORT || 3009, "0.0.0.0", () => {
       console.log(`Collab HTTP+WS gateway on port 3009 ; upstream y-websocket on 1234`);
     });
 
