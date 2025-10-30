@@ -305,10 +305,10 @@ export async function getQuestionId(
   const baseURL = "http://question:3002";
   const params = new URLSearchParams();
 
-  if (topic) params.append("topicNames", topic);
   if (difficulty) params.append("difficulty", difficulty);
-  if (language) params.append("language", language);
-
+  if (topic) params.append("topicNames", topic);
+  // if (language) params.append("language", language);
+  console.log("PARAMS: " + params)
   try {
     const response = await axios.get(`${baseURL}/api/questions`, { params });
 
