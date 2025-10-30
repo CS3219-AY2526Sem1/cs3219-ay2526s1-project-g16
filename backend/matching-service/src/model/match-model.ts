@@ -311,7 +311,7 @@ export async function getQuestionId(
   console.log("PARAMS: " + params)
   try {
     const response = await axios.get(`${baseURL}/api/questions`, { params });
-
+    console.log("response: " + response)
     const questions = response.data;
     if (!Array.isArray(questions) || questions.length === 0) {
       throw new Error("No question found for the given filters");
