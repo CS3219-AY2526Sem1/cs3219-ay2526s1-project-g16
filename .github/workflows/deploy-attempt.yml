@@ -69,7 +69,7 @@ jobs:
           script: |
             set -e
             cd ~/app/attempt
-            gcloud secrets versions access latest --secret=app-env > attempt.env
+            gcloud secrets versions access latest --secret=attempt-env > attempt.env
             docker compose pull
             docker compose up -d
             docker image prune -f --filter "until=24h"
