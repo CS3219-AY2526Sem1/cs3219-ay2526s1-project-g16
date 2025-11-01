@@ -5,6 +5,8 @@ import dotenv from "dotenv";
 import {
     createAttemptProxy,
     createCollabProxy,
+    createMatchProxy,
+    createQuestionProxy,
     createUserProxy,
 } from './proxy.ts';
 import { authenticateJWT, authorizeJWT } from './access-control.ts';
@@ -53,6 +55,13 @@ app.use('/attempt', authenticateJWT, attemptProxy);
 const collabProxy = createCollabProxy();
 app.use('/collab', authenticateJWT, collabProxy);
 
+// matching service routes
+const matchProxy = createMatchProxy();
+app.use('/match', authenticateJWT, matchProxy);
+
+// question service routes
+const questionProxy = createQuestionProxy();
+app.use('/questionBank', authenticateJWT, questionProxy);
 
 app.listen(port, () => {
   console.log(`API gateway running on port ${port}. Frontend URL: ${frontend}`);
