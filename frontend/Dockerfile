@@ -8,7 +8,7 @@ WORKDIR /app
 # 1. Copy manifests & prisma
 # -----------------------------
 COPY package*.json ./
-COPY prisma ./prisma
+# COPY prisma ./prisma
 
 # Install dependencies (include dev for tsx)
 RUN npm ci
@@ -19,18 +19,18 @@ RUN npm ci
 COPY . .
 
 # -----------------------------
-# 3. Runtime setup
+# 3. Build
+# -----------------------------
+RUN npm run build
+
+# -----------------------------
+# 4. Runtime setup
 # -----------------------------
 ENV NODE_ENV=production
 
-EXPOSE 3000
+EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3000/healthz || exit 1
-
-# -----------------------------
-# 4. Build
-# -----------------------------
-RUN npm run build
+  CMD wget -qO- http://127.0.0.1:8000/healthz || exit 1
 
 # -----------------------------
 # 5. Start app (tsx)

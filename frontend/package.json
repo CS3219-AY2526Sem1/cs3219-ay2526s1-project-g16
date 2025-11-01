@@ -6,7 +6,7 @@
     "dev": "vite --port 8000",
     "start": "vite --port 8000",
     "build": "vite build && tsc",
-    "serve": "vite preview",
+    "serve": "vite preview --host 0.0.0.0 --port 8000",
     "test": "vitest run"
   },
   "dependencies": {
@@ -52,7 +52,7 @@
     "prettier-plugin-tailwindcss": "^0.6.14",
     "tw-animate-css": "^1.3.8",
     "typescript": "^5.7.2",
-    "vite": "^6.3.5",
+    "vite": "^6.4.1",
     "vitest": "^3.0.5",
     "web-vitals": "^4.2.4"
   }
