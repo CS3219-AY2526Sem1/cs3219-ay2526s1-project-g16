@@ -21,7 +21,7 @@ app.use(cookieParser());
 
 app.use(express.json());
 
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3003;
 
 // Add attempt routes
 app.use("/", attemptRoutes);
