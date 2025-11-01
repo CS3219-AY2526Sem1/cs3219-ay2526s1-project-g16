@@ -172,30 +172,34 @@ type EnqueueResult =
     };
 
 export async function checkIfUserInMatch(req: Request, _res: Response): Promise<void> {
+  const token = extractAccessToken(req);
+  if (!token) {
+    const e: any = new Error("User not authenticated");
+    throw e;
+  }
+
   const url = `${COLLAB_BASE}/sessions/active`;
+  const resp = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
-  try {
-    const cookieHeader = Object.entries(req.cookies ?? {})
-      .map(([k, v]) => `${k}=${v}`)
-      .join("; ");
+  if (resp.status === 401 || resp.status === 403 || resp.status === 404) {
+    console.warn(`[checkIfUserInMatch] upstream ${resp.status} ${resp.statusText}`);
+    const e: any = new Error("Not Expected Error Thrown");
+    throw e;
+  }
 
-    const active = await httpJSON<CollabSession | null>(url, {
-      method: "GET",
-      headers: {
-        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-      },
-    });
+  const body = (await resp.json()) as { data: CollabSession | null };
+  const active = body?.data ?? null;
 
-    if (active && active.status === "ACTIVE") {
-      const e: any = new Error("User already in active session");
-      e.code = "ALREADY_IN_ACTIVE_SESSION";
-      e.session = active;
-      throw e;
-    }
-  } catch (e: any) {
-    if (!/HTTP 404/.test(e?.message ?? "")) {
-      console.warn(`[checkIfUserInMatch] Upstream check failed: ${e?.message}`);
-    }
+  if (active && active.status === "ACTIVE") {
+    const e: any = new Error("User already in active session");
+    e.code = "ALREADY_IN_ACTIVE_SESSION";
+    e.session = active;
+    throw e;
   }
 }
 
@@ -244,4 +248,11 @@ async function httpJSON<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   }
 
   return res.json() as Promise<T>;
+}
+
+function extractAccessToken(req: Request): string | null {
+  const h = req.headers.authorization;
+  if (typeof h === "string" && h.startsWith("Bearer ")) return h.slice(7);
+  if (req.cookies?.jwt_access_token) return req.cookies.jwt_access_token;
+  return null;
 }
