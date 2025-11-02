@@ -25,4 +25,6 @@ router.post("/sessions/:id/leave", leaveSession);
 
 router.post("/sessions/sweeper/run", runSweeperNow);
 
+router.get('/healthz', (_req, res) => res.status(200).send('ok'));
+
 export default router;

@@ -1,6 +1,7 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import cookieParser from "cookie-parser"; 
 
 import matchRoutes from "./routes/match-routes.ts";
 import { initConnection } from "./model/match-model.ts";
@@ -10,6 +11,8 @@ import { startMatchSweeper } from "./controller/match-sweeper.ts";
 dotenv.config();
 
 const app = express();
+
+app.use(cookieParser());       
 
 // Use cors to allow frontend URL to access this app.
 app.use(
@@ -39,8 +42,8 @@ app.get("/", (_req, res) => {
       await startMatchSweeper();
     }
 
-    app.listen(port, () => {
-      console.log(`User service is running at http://localhost:${port}`);
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`Match service listening on 0.0.0.0:${port}`);
     });
   } catch (err) {
     console.error("[bootstrap] failed to start:", err);

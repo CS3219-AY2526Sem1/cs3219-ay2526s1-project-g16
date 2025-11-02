@@ -11,14 +11,25 @@ import {
 } from "../model/collab-model.ts";
 import { decodeAccessToken } from "./collab-utils.ts";
 
+// Accepts both Authorisation Header (API to API) AND cookies
+function extractAccessToken(req: Request): string | null {
+  const h = req.headers.authorization;
+  if (typeof h === "string" && h.startsWith("Bearer ")) return h.slice(7);
+  if (req.cookies?.jwt_access_token) return req.cookies.jwt_access_token;
+  return null;
+}
+
 // GET /collab/session/active
 export async function getMyActiveSession(req: Request, res: Response) {
   try {
-    const decoded = decodeAccessToken(req.cookies.jwt_access_token);
+    const token = extractAccessToken(req);
+    if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+    const decoded = decodeAccessToken(token);
     const session = await findMyActiveSession(decoded.sub); //decoded.sub == user id
-    return res.status(200).json({ data: session });
+    return res.status(200).json({ data: session }); // CollabSession or null
   } catch {
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error: Cannot get active session." });
   }
 }
 
@@ -27,7 +38,7 @@ export async function runSweeperNow(req: Request, res: Response) {
     const out = await sweepExpiredSessions();
     return res.status(200).json({ data: out });
   } catch (e) {
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error: Collab sweeper error" });
   }
 }
 
@@ -63,7 +74,7 @@ export async function createSession(req: Request, res: Response) {
     return res.status(201).json({ data: session });
   } catch (e) {
     console.error("Error creating session:", e); 
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error: Session creation error." });
   }
 }
 
@@ -79,7 +90,7 @@ export async function endSession(req: Request, res: Response) {
     const ended = await _endSession(id);
     return res.status(200).json({ data: ended });
   } catch {
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error: Session ending error." });
   }
 }
 
@@ -96,7 +107,7 @@ export async function joinSession(req: Request, res: Response) {
     if (!session) return res.status(404).json({ error: "Session not found or not active" });
     return res.status(200).json({ data: session });
   } catch {
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error: Session joining error." });
   }
 }
 
@@ -110,7 +121,7 @@ export async function leaveSession(req: Request, res: Response) {
     await _leaveSession(id, decoded.sub);
     return res.status(200).json({ data: { left: true } });
   } catch {
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error: Session leaving error." });
   }
 }
 
@@ -124,7 +135,7 @@ export async function getSession(req: Request, res: Response) {
     if (!session) return res.status(404).json({ error: "Not found" });
     return res.status(200).json({ data: session });
   } catch {
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error: Session retrieval error." });
   }
 }
 

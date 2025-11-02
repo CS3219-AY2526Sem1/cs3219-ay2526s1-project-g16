@@ -32,7 +32,7 @@ export const createAttemptProxy = () =>
     }
   });
 
-  export const createCollabProxy = () =>
+export const createCollabProxy = () =>
   createProxyMiddleware({
     target: process.env.COLLAB_SERVICE_URL,
     changeOrigin: true,
@@ -41,6 +41,38 @@ export const createAttemptProxy = () =>
     on: {
       proxyReq: (proxyReq, req, res) => {
         const targetUrl = `${process.env.COLLAB_SERVICE_URL}${req.url}`;
+        console.log(`[Proxy] ${req.method} ${req.url} -> ${targetUrl}`);
+      }
+    }
+  });
+
+export const createMatchProxy = () =>
+  createProxyMiddleware({
+    target: process.env.MATCHING_SERVICE_URL,
+    changeOrigin: true,
+    logger: console,
+    pathRewrite: {
+      '^/': '/match/', 
+    },
+    on: {
+      proxyReq: (proxyReq, req, res) => {
+        const targetUrl = `${process.env.MATCHING_SERVICE_URL}${req.url}`;
+        console.log(`[Proxy] ${req.method} ${req.url} -> ${targetUrl}`);
+      }
+    }
+  });
+
+export const createQuestionProxy = () =>
+  createProxyMiddleware({
+    target: process.env.QUESTION_SERVICE_URL,
+    changeOrigin: true,
+    logger: console,
+    pathRewrite: {
+      '^/questionBank': '', // Remove /questionBank prefix
+    },
+    on: {
+      proxyReq: (proxyReq, req, res) => {
+        const targetUrl = `${process.env.QUESTION_SERVICE_URL}${req.url}`;
         console.log(`[Proxy] ${req.method} ${req.url} -> ${targetUrl}`);
       }
     }

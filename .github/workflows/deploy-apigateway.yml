@@ -1,24 +1,24 @@
-name: question-service → GCE VM
+name: apigateway → GCE VM
 
 on:
   push:
     branches: [ "master" ]
     paths:
-      - 'backend/question-service/**'
-      - '.github/workflows/deploy-question.yml'
+      - 'backend/api-gateway/**'
+      - '.github/workflows/deploy-apigateway.yml'
   pull_request:
     branches: [ "master" ]
     paths:
-      - 'backend/question-service/**'
-      - '.github/workflows/deploy-question.yml'
+      - 'backend/api-gateway/**'
+      - '.github/workflows/deploy-apigateway.yml'
   workflow_dispatch:
 
 env:
   REGION: asia-southeast1
   PROJECT_ID: agile-charger-472814-j0
   REPO: my-docker-repo
-  IMAGE: question-service
-  CONTEXT_DIR: backend/question-service
+  IMAGE: apigateway
+  CONTEXT_DIR: backend/api-gateway
 
 jobs:
   build-and-push:
@@ -68,8 +68,8 @@ jobs:
           port: ${{ secrets.VM_PORT || 22 }}
           script: |
             set -e
-            cd ~/app/question
-            gcloud secrets versions access latest --secret=app-env > question.env
+            cd ~/app/apigateway
+            gcloud secrets versions access latest --secret=apigateway-env > apigateway.env
             docker compose pull
             docker compose up -d
             docker image prune -f --filter "until=24h"

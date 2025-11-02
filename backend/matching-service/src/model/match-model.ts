@@ -1,3 +1,4 @@
+import axios from "axios";
 import { PrismaClient, Prisma } from "../generated/prisma/index.js";
 import { nanoid } from "nanoid";
 
@@ -133,7 +134,12 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
         const chosenLanguage = pickOne(overlap.language) ?? "unspecified";
         const chosenDifficulty = pickOne(overlap.difficulty) ?? "unspecified";
         const chosenTopic = pickOne(overlap.topic) ?? "unspecified";
-        const questionId = getQuestionId(chosenTopic, chosenLanguage, chosenDifficulty);
+        let chosenQuestionId: string | null = null;
+        try {
+          chosenQuestionId = await getQuestionId(chosenTopic, chosenLanguage, chosenDifficulty);
+        } catch (e) {
+          console.warn("[match] getQuestionId failed; falling back to null:", e);
+        }
 
         console.log("[match] chosen overlap", {
           userId,
@@ -141,6 +147,7 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
           language: chosenLanguage,
           difficulty: chosenDifficulty,
           topic: chosenTopic,
+          questionId: chosenQuestionId,
         });
 
         await writeMatchedUsers(tx, {
@@ -150,7 +157,7 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
           language: chosenLanguage,
           difficulty: chosenDifficulty,
           topic: chosenTopic,
-          questionId,
+          questionId: chosenQuestionId,
           matchedAt: new Date(),
         });
 
@@ -274,7 +281,7 @@ function toArray<T>(value?: T | T[]): T[] {
 }
 
 function normalize(value: string): string {
-  return value.trim().toLowerCase();
+  return value.trim();
 }
 
 function toNormalizedSet(values?: string[] | null): string[] {
@@ -296,9 +303,37 @@ function hasOverlap(a: string[], b?: string[] | null): boolean {
   return a.some((item) => bSet.has(normalize(item)));
 }
 
-function getQuestionId(topic?: string, language?: string, difficulty?: string): string {
-  // TODO
-  return "123";
+export async function getQuestionId(
+  topic?: string,
+  language?: string,
+  difficulty?: string
+): Promise<string> {
+  const baseURL = "http://question:3002";
+  const params: Record<string, string> = {};
+
+  if (difficulty) params["difficulty"] = difficulty;
+  if (topic) params["topicNames"] = topic;
+  // if (language) params["language"] = language;
+
+  console.log("PARAMS:", params);
+
+  try {
+    const response = await axios.get(`${baseURL}/api/questions`, { params });
+
+    console.log("Response received:", response.data.items);
+
+    const ids = response.data.items.map((item: any) => item.id);
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new Error("No question found for the given filters");
+    }
+
+    console.log("Got QuestionID:", ids[0]);
+    return String(ids[0]);
+  } catch (err: any) {
+    console.error("Error fetching question ID:", err.message);
+    throw err;
+  }
 }
 
 export async function writeMatchedUsers(
@@ -310,7 +345,7 @@ export async function writeMatchedUsers(
     language: string;
     difficulty: string;
     topic: string;
-    questionId?: string | null;
+    questionId: string;
     matchedAt?: Date;
   }
 ) {

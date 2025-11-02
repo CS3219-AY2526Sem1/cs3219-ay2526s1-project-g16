@@ -20,7 +20,7 @@ app.use(
 
 app.use(express.json());
 
-const port = process.env.PORT || 3002;
+const port = Number(process.env.PORT) || 3002;
 
 // Add user routes
 app.use("/api/questions", questionRoutes);
@@ -29,8 +29,8 @@ app.use("/api/languages", languageRoutes);
 
 initConnection()
   .then(() => {
-    app.listen(port, () => {
-      console.log(`Question service is running at http://localhost:${port}`);
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`Question service listening on 0.0.0.0:${port}`);
     });
   })
   .catch((err) => {

@@ -13,7 +13,7 @@ export const initConnection = async (): Promise<void> => {
   }
 };
 
-// Returns a participant if he is in active session
+// Returns status if he is in active session
 export async function findMyActiveSession(userId: string) {
   const row = await prisma.participant.findFirst({
     where: { userId, leftAt: null, session: { status: "ACTIVE" } },
