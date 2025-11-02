@@ -26,7 +26,7 @@ function extractAccessToken(req: Request): string | null {
 
 async function fetchUsernameById(userId: string): Promise<string | null> {
   try {
-    const resp = await fetch(`${USER_SERVICE_BASE}/users/${encodeURIComponent(userId)}`, { method: "GET" });
+    const resp = await fetch(`${USER_SERVICE_BASE}/user/${encodeURIComponent(userId)}`, { method: "GET" });
     if (!resp.ok) return null;
     const data = await resp.json();
     // depends on your user service response shape; adjust if needed
