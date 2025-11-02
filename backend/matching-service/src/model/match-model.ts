@@ -318,7 +318,7 @@ export async function getQuestionId(
   console.log("PARAMS:", params);
 
   try {
-    const response = await axios.get(`${baseURL}/api/questions`, { params });
+    const response = await axios.get(`${baseURL}/questions`, { params });
 
     console.log("Response received:", response.data.items);
 
