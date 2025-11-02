@@ -22,8 +22,17 @@ export async function findMyActiveSession(userId: string) {
   return row?.session ?? null;
 }
 
+// Returns status by username
+export async function findActiveSessionByUsername(username: string) {
+  const row = await prisma.participant.findFirst({
+    where: { username, leftAt: null, session: { status: "ACTIVE" } },
+    select: { session: true },
+  });
+  return row?.session ?? null;
+}
+
 // ====== Session ops =====
-const DEFAULT_TTL_MIN = 90; // 90 mins session
+const DEFAULT_TTL_MIN = 90;
 
 export const createSession = async (
   roomId: string,
@@ -39,7 +48,7 @@ export const createSession = async (
       topic,
       difficulty,
       questionId: questionId ?? null,
-      expiresAt: expiresAt ?? null,
+      expiresAt: exp ?? null,
     },
     include: { participants: true },
   });

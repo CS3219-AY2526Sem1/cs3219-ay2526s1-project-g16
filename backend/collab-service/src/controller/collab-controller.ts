@@ -6,10 +6,13 @@ import {
   joinSession as _joinSession,
   leaveSession as _leaveSession,
   findMyActiveSession,
+  findActiveSessionByUsername,
   sweepExpiredSessions,
   seedDocIfEmpty
 } from "../model/collab-model.ts";
 import { decodeAccessToken } from "./collab-utils.ts";
+
+// ====== Helpers ===== 
 
 // Accepts both Authorisation Header (API to API) AND cookies
 function extractAccessToken(req: Request): string | null {
@@ -19,7 +22,19 @@ function extractAccessToken(req: Request): string | null {
   return null;
 }
 
-// GET /collab/session/active
+// ====== Endpoints ===== 
+
+// POST /sessions/sweeper/run
+export async function runSweeperNow(req: Request, res: Response) {
+  try {
+    const out = await sweepExpiredSessions();
+    return res.status(200).json({ data: out });
+  } catch (e) {
+    return res.status(500).json({ error: "Internal server error: Collab sweeper error" });
+  }
+}
+
+// GET /sessions/active
 export async function getMyActiveSession(req: Request, res: Response) {
   try {
     const token = extractAccessToken(req);
@@ -33,25 +48,32 @@ export async function getMyActiveSession(req: Request, res: Response) {
   }
 }
 
-export async function runSweeperNow(req: Request, res: Response) {
+// POST /sessions/active/username  (unauthenticated)
+export async function getActiveSessionByUsername(req: Request, res: Response) {
   try {
-    const out = await sweepExpiredSessions();
-    return res.status(200).json({ data: out });
+    const raw = (req.body?.username ?? "").toString().trim();
+    if (!raw) return res.status(400).json({ error: "username is required" });
+    const username = raw;
+
+    const session = await findActiveSessionByUsername(username);
+    if (!session) return res.status(200).json({ data: null });
+
+    return res.status(200).json({ data: session }); 
   } catch (e) {
-    return res.status(500).json({ error: "Internal server error: Collab sweeper error" });
+    console.error("getActiveSessionByUsername error:", e);
+    return res.status(500).json({ error: "Internal server error: Cannot get active session by username." });
   }
 }
 
-// POST /collab/sessions
+// POST /sessions
+// Frontend should retrieve question based on session.questionId after joinSession
 export async function createSession(req: Request, res: Response) {
   try {
     const { topic, difficulty, questionId, roomId, expiresAt } = req.body; // allow roomId from matcher (Jasper)
     if (!topic || !difficulty) {
       return res.status(400).json({ error: "topic and difficulty are required" });
     }
-    // query from alicia
-
-    // set up actual collab service
+  
     const session = await _createSession(
       roomId,
       topic, 
@@ -60,25 +82,14 @@ export async function createSession(req: Request, res: Response) {
       expiresAt ? new Date(expiresAt) : undefined
     );
 
-    // seed the ydoc - not implemented yet, ignore for now
-    // const id = session.id;
-    // await seedDocIfEmpty(id, [
-    //   `// Room: ${id}`,
-    //   `// Topic: ${topic} | Difficulty: ${difficulty}`,
-    //   ``,
-    //   `function demo(){ console.log("Hello PeerPrep"); }`,
-    //   `demo();`,
-    //   ``,
-    // ].join('\n'));
-    
-    return res.status(201).json({ data: session });
+    return res.status(201).json({ data: { session } });
   } catch (e) {
     console.error("Error creating session:", e); 
     return res.status(500).json({ error: "Internal server error: Session creation error." });
   }
 }
 
-// POST /collab/sessions/:id/end 
+// POST /sessions/:id/end 
 export async function endSession(req: Request, res: Response) {
   try {
     const {id} = req.params;
@@ -94,7 +105,7 @@ export async function endSession(req: Request, res: Response) {
   }
 }
 
-// POST /collab/sessions/:id/join
+// POST /sessions/:id/join
 export async function joinSession(req: Request, res: Response) {
   try {
     const { id } = req.params;
@@ -111,7 +122,7 @@ export async function joinSession(req: Request, res: Response) {
   }
 }
 
-// POST /collab/sessions/:id/leave
+// POST /sessions/:id/leave
 export async function leaveSession(req: Request, res: Response) {
   try {
     const { id } = req.params;
@@ -125,7 +136,7 @@ export async function leaveSession(req: Request, res: Response) {
   }
 }
 
-// GET /collab/sessions/:id
+// GET /sessions/:id
 export async function getSession(req: Request, res: Response) {
   try {
     const { id } = req.params;
