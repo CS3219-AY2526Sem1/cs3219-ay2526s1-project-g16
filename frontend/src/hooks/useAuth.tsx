@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const response = await authFetch(`${USER_SERVICE_URL}/user`);
+        const response = await authFetch(`${USER_SERVICE_URL}`);
         if (response.ok) {
           const user: User = await response.json();
           setUser(user);
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     let response: Response;
     try {
-      response = await authFetch(`${USER_SERVICE_URL}/user/login`, {
+      response = await authFetch(`${USER_SERVICE_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      return void (await authFetch(`${USER_SERVICE_URL}/user/logout`, {
+      return void (await authFetch(`${USER_SERVICE_URL}/logout`, {
         method: "POST",
       }));
     } catch (error) {
