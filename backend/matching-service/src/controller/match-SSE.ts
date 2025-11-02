@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { getStatus } from "../model/match-model.ts";
 import { checkIfUserInMatch } from "./match-controller.ts";
+import { subscribeUser } from "./match-pg-listener.ts";
 
 export async function subscribeMatchSSE(req: Request, res: Response) {
   const parseUserId = z.string().min(1).safeParse(req.params.userId);
@@ -57,41 +58,32 @@ export async function subscribeMatchSSE(req: Request, res: Response) {
   }
 
   let stopped = false;
-  const poll = async () => {
+
+  const off = subscribeUser(userId, (msg) => {
     if (stopped || res.writableEnded) return;
 
-    try {
-      const status = await getStatus(userId);
-      const s = status?.status;
+    const s = msg.status.toUpperCase();
 
-      if (s === "matched") {
-        return safeEnd("MATCH_FOUND", status ?? {});
-      }
-
-      const st = (status as any)?.startedTime;
-      if (st && !Number.isNaN(Date.parse(st))) {
-        startedAt = new Date(st);
-      }
-    } catch {
-      // keep polling
-    }
-
-    if (Date.now() - +startedAt > SSE_WINDOW_MS) {
+    if (s === "MATCHED") {
       stopped = true;
-      return safeEnd("TIMEOUT", {
-        message: "No match found",
-        startedTime: startedAt,
-        ttlMs: SSE_WINDOW_MS,
-      });
+      safeEnd("MATCH_FOUND", msg);
+    } else if (["CANCELLED", "EXPIRED"].includes(s)) {
+      stopped = true;
+      safeEnd("TIMEOUT", msg);
     }
+  });
 
-    setTimeout(poll, 1_000);
-  };
-
-  poll();
+  const timeout = setTimeout(() => {
+    if (!stopped) {
+      stopped = true;
+      safeEnd("TIMEOUT", { message: "No match found" });
+    }
+  }, SSE_WINDOW_MS);
 
   req.on("close", () => {
     stopped = true;
+    off();          // unsubscribe
     clearInterval(heartbeat);
+    clearTimeout(timeout);
   });
 }
