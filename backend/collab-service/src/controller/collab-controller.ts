@@ -12,6 +12,8 @@ import {
 } from "../model/collab-model.ts";
 import { decodeAccessToken } from "./collab-utils.ts";
 
+const USER_SERVICE_BASE = process.env.USER_SERVICE_BASE ?? "http://localhost:3000"; 
+
 // ====== Helpers ===== 
 
 // Accepts both Authorisation Header (API to API) AND cookies
@@ -20,6 +22,20 @@ function extractAccessToken(req: Request): string | null {
   if (typeof h === "string" && h.startsWith("Bearer ")) return h.slice(7);
   if (req.cookies?.jwt_access_token) return req.cookies.jwt_access_token;
   return null;
+}
+
+async function fetchUsernameById(userId: string): Promise<string | null> {
+  try {
+    const resp = await fetch(`${USER_SERVICE_BASE}/users/${encodeURIComponent(userId)}`, { method: "GET" });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    // depends on your user service response shape; adjust if needed
+    const username = data?.username ?? data?.data?.username ?? data?.user?.username;
+    return typeof username === "string" ? username : null;
+  } catch {
+    console.log("Collab error - fetch username by ID");
+    return null;
+  }
 }
 
 // ====== Endpoints ===== 
@@ -69,10 +85,7 @@ export async function getActiveSessionByUsername(req: Request, res: Response) {
 // Frontend should retrieve question based on session.questionId after joinSession
 export async function createSession(req: Request, res: Response) {
   try {
-    const { topic, difficulty, questionId, roomId, expiresAt } = req.body; // allow roomId from matcher (Jasper)
-    if (!topic || !difficulty) {
-      return res.status(400).json({ error: "topic and difficulty are required" });
-    }
+    const { topic, difficulty, questionId, roomId, expiresAt, user1ID, user2ID } = req.body; 
   
     const session = await _createSession(
       roomId,
@@ -82,7 +95,29 @@ export async function createSession(req: Request, res: Response) {
       expiresAt ? new Date(expiresAt) : undefined
     );
 
-    return res.status(201).json({ data: { session } });
+    // upsert both users - _joinSession
+    if (user1ID) {
+      try {
+        const user1Name = (await fetchUsernameById(user1ID)) ?? "";
+        await _joinSession(session.id, { id: user1ID, username: user1Name });
+      } catch (e) {
+        console.warn("joinSession failed for user1:", e);
+      }
+    }
+
+    // upsert second user
+    if (user2ID) {
+      try {
+        const user2Name = (await fetchUsernameById(user2ID)) ?? "";
+        await _joinSession(session.id, { id: user2ID, username: user2Name });
+      } catch (e) {
+        console.warn("joinSession failed for user2:", e);
+      }
+    }
+
+    const fresh = await _getSession(session.id);
+
+    return res.status(201).json({ data: { fresh } });
   } catch (e) {
     console.error("Error creating session:", e); 
     return res.status(500).json({ error: "Internal server error: Session creation error." });
