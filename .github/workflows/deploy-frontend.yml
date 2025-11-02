@@ -69,7 +69,7 @@ jobs:
           script: |
             set -e
             cd ~/app/frontend
-            gcloud secrets versions access latest --secret=frontend-env > frontend.env
+            gcloud secrets versions access latest --secret=frontend-env > .env
             docker compose pull
             docker compose up -d
             docker image prune -f --filter "until=24h"
