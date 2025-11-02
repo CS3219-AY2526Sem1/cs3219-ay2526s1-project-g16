@@ -33,12 +33,14 @@ export type MatchResult =
   | {
       status: "matched";
       roomId: string;
+      userId: string;
       partnerId: string;
       startedTime?: Date;
       expiresAt?: Date;
       language?: string;
       difficulty?: string;
       topic?: string;
+      questionId: string;
     }
   | { status: "queued"; expiresAt: Date; startedTime?: Date }
   | { status: "cancelled"; startedTime?: Date }
@@ -168,12 +170,14 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
         return {
           status: "matched",
           roomId,
+          userId: userId,
           partnerId: partner.userId,
           startedTime: new Date(),
           expiresAt,
           language: chosenLanguage,
           difficulty: chosenDifficulty,
           topic: chosenTopic,
+          questionId: chosenQuestionId,
         };
       }
 
@@ -308,7 +312,7 @@ export async function getQuestionId(
   language?: string,
   difficulty?: string
 ): Promise<string> {
-  const baseURL = "http://question:3002";
+  const baseURL = process.env.QUESTION_SERVICE_URL ?? "http://question:3002";
   const params: Record<string, string> = {};
 
   if (difficulty) params["difficulty"] = difficulty;

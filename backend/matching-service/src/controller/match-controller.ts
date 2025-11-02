@@ -91,6 +91,8 @@ type EnqueueResult =
       topic?: string;
       difficulty?: string;
       questionId?: string | null;
+      userId?: string | null;
+      partnerId?: string | null;
     };
 
 export async function checkIfUserInMatch(req: Request, _res: Response): Promise<void> {
@@ -137,14 +139,18 @@ export async function createUserMatch(
   const topic = match.topic ?? body.topic;
   const difficulty = match.difficulty ?? body.difficulty;
   const questionId = match.questionId ?? body.questionId ?? null;
+  const user1ID = match.userId ?? null;
+  const user2ID = match.partnerId ?? null;
 
   const url = `${COLLAB_BASE}/sessions`;
-
+  
   const payload = {
     id: roomId,
     topic,
     difficulty,
     questionId,
+    user1ID,
+    user2ID
   };
 
   const session = await httpJSON<CollabSession>(url, {
