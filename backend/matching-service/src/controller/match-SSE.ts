@@ -1,12 +1,12 @@
-// src/controller/match-controller.ts
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { getStatus } from "../model/match-model.ts";
-import { subscribeUser } from "./match-pg-listener.ts";
 
-const matchSignals = new Map<string, Set<(data: any) => void>>();
+type SignalPayload = any;
 
-function registerSignal(userId: string, fn: (data: any) => void) {
+const matchSignals = new Map<string, Set<(data: SignalPayload) => void>>();
+
+function registerSignal(userId: string, fn: (data: SignalPayload) => void) {
   let set = matchSignals.get(userId);
   if (!set) {
     set = new Set();
@@ -21,31 +21,36 @@ function registerSignal(userId: string, fn: (data: any) => void) {
   };
 }
 
-function fireSignal(userId: string, data: any): number {
+function fireSignal(userId: string, data: SignalPayload): number {
   const listeners = matchSignals.get(userId);
   if (!listeners || listeners.size === 0) return 0;
-  listeners.forEach(fn => fn(data));
+  listeners.forEach((fn) => fn(data));
   matchSignals.delete(userId);
   return listeners.size;
 }
 
 function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function subscribeMatchSSE(req: Request, res: Response) {
-  const parseUserId = z.string().min(1).safeParse(req.params.userId);
-  if (!parseUserId.success) {
+  const parsed = z.string().min(1).safeParse(req.params.userId);
+  if (!parsed.success) {
     res.status(400).end("Invalid userId");
     return;
   }
-  const userId = parseUserId.data;
+  const userId = parsed.data;
 
-  const ttlMsParam = Number(req.query.ttlMs);
+  const ttlMsRaw = Number(req.query.ttlMs);
+  const pollMsRaw = Number(req.query.pollMs);
   const SSE_WINDOW_MS =
-    Number.isFinite(ttlMsParam) && ttlMsParam > 0
-      ? Math.min(ttlMsParam, 10 * 60 * 1000)
+    Number.isFinite(ttlMsRaw) && ttlMsRaw > 0
+      ? Math.min(ttlMsRaw, 10 * 60 * 1000)
       : 30_000;
+  const POLL_MS =
+    Number.isFinite(pollMsRaw) && pollMsRaw > 0
+      ? Math.max(200, Math.min(pollMsRaw, 5000))
+      : 1000;
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -53,77 +58,80 @@ export async function subscribeMatchSSE(req: Request, res: Response) {
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders?.();
 
-  const heartbeat = setInterval(() => {
-    if (!res.writableEnded) res.write(`event: heartbeat\ndata: {}\n\n`);
-  }, 15_000);
+  let heartbeat: NodeJS.Timeout | null = null;
+  let timeout: NodeJS.Timeout | null = null;
+  let pollerActive = true;
+  let unregisterSignal: (() => void) | null = null;
+  let stopped = false;
+
+  const safeClear = () => {
+    if (heartbeat) {
+      clearInterval(heartbeat);
+      heartbeat = null;
+    }
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+    if (unregisterSignal) {
+      try { unregisterSignal(); } catch {}
+      unregisterSignal = null;
+    }
+    pollerActive = false;
+  };
 
   const safeEnd = (event: "MATCH_FOUND" | "TIMEOUT", data: any) => {
     if (res.writableEnded) return;
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
-    clearInterval(heartbeat);
-    clearTimeout(timeout);
-    unregisterSignal();
-    off();
+    try {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    } catch { /* ignore write errors */ }
+    stopped = true;
+    safeClear();
     res.end();
   };
 
-  let startedAt = new Date();
-  let stopped = false;
+  heartbeat = setInterval(() => {
+    if (!res.writableEnded) res.write(`event: heartbeat\ndata: {}\n\n`);
+  }, 15_000);
 
-  try {
-    await delay(5000);
-  } catch (e: any) {
-    if (e?.code === "ALREADY_IN_ACTIVE_SESSION") {
-      return safeEnd("MATCH_FOUND", { session: e.session });
-    }
-  }
-
-  try {
-    const initial = await getStatus(userId);
-    const st = (initial as any)?.startedTime;
-    if (st && !Number.isNaN(Date.parse(st))) startedAt = new Date(st);
-  } catch {
-    /* ignore */
-  }
-  const off = subscribeUser(userId, (msg) => {
+  unregisterSignal = registerSignal(userId, (data: any) => {
     if (stopped || res.writableEnded) return;
-    const s = String(msg.status).toUpperCase();
-    if (s === "MATCHED") {
-      stopped = true;
-      safeEnd("MATCH_FOUND", msg);
-    } else if (["CANCELLED", "EXPIRED"].includes(s)) {
-      stopped = true;
-      safeEnd("TIMEOUT", msg);
-    }
-  });
-
-  const unregisterSignal = registerSignal(userId, (data: any) => {
-    if (stopped || res.writableEnded) return;
-    stopped = true;
     safeEnd("MATCH_FOUND", data ?? { message: "Signalled match" });
   });
 
-  const timeout = setTimeout(() => {
-    if (!stopped) {
-      stopped = true;
-      safeEnd("TIMEOUT", { message: "No match found" });
+  (async () => {
+    while (pollerActive && !stopped && !res.writableEnded) {
+      try {
+        const st = await getStatus(userId); // shape: { status: string, ... }
+        const s = String((st as any)?.status ?? "").toUpperCase();
+        if (s === "MATCHED") {
+          return safeEnd("MATCH_FOUND", st);
+        }
+        if (s === "CANCELLED" || s === "EXPIRED") {
+          return safeEnd("TIMEOUT", st);
+        }
+      } catch {
+        // ignore transient errors; keep pollin
+      }
+      await delay(POLL_MS);
     }
+  })();
+
+  timeout = setTimeout(() => {
+    if (!stopped) safeEnd("TIMEOUT", { message: "No match found" });
   }, SSE_WINDOW_MS);
 
   req.on("close", () => {
     stopped = true;
-    off();
-    unregisterSignal();
-    clearInterval(heartbeat);
-    clearTimeout(timeout);
+    safeClear();
   });
 }
 
 export function signalMatchFound(req: Request, res: Response) {
-  const parseUserId = z.string().min(1).safeParse(req.params.userId);
-  if (!parseUserId.success) return res.status(400).json({ error: "Invalid userId" });
-  const userId = parseUserId.data;
+  const parsed = z.string().min(1).safeParse(req.params.userId);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid userId" });
+  const userId = parsed.data;
 
   const payload = {
     session: {
@@ -131,11 +139,12 @@ export function signalMatchFound(req: Request, res: Response) {
       via: "manual-signal",
       at: new Date().toISOString(),
     },
-    ...(typeof req.body === "object" ? req.body : {}),
+    ...(typeof req.body === "object" && req.body ? req.body : {}),
   };
 
   const delivered = fireSignal(userId, payload);
-  if (delivered === 0) return res.status(404).json({ error: "No live SSE subscribers for userId" });
-
+  if (delivered === 0) {
+    return res.status(404).json({ error: "No live SSE subscribers for userId" });
+  }
   return res.json({ ok: true, delivered });
 }
