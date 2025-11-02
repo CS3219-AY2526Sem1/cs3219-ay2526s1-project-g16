@@ -51,7 +51,7 @@ function Home() {
 
   const findMatchMutation = useMutation({
     mutationFn: async (): Promise<MatchResponse> => {
-      const res = await authFetch(`${MATCH_SERVICE_URL}/match/request`, {
+      const res = await authFetch(`${MATCH_SERVICE_URL}/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -73,7 +73,7 @@ function Home() {
 
   const cancelMatchMutation = useMutation({
     mutationFn: async () => {
-      const res = await authFetch(`${MATCH_SERVICE_URL}/match/cancel`, {
+      const res = await authFetch(`${MATCH_SERVICE_URL}/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -7,9 +7,8 @@ export const Route = createFileRoute("/_unauthenticated")({
 function Unauthenticated() {
   return (
     <>
-      <header>unauthenticated header</header>
       <div className="flex h-full flex-col">
-        <div className="grow-2 flex flex-col items-center justify-center gap-10">
+        <div className="flex grow-2 flex-col items-center justify-center gap-10">
           <img src="logo.png" width={100} height={100} />
           <Outlet />
         </div>
