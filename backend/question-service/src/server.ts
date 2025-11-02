@@ -22,10 +22,10 @@ app.use(express.json());
 
 const port = Number(process.env.PORT) || 3002;
 
-// Add user routes
-app.use("/api/questions", questionRoutes);
-app.use("/api/topics", topicRoutes);
-app.use("/api/languages", languageRoutes);
+// Add question routes
+app.use("/questions", questionRoutes);
+app.use("/topics", topicRoutes);
+app.use("/languages", languageRoutes);
 
 initConnection()
   .then(() => {
