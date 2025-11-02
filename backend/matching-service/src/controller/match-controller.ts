@@ -59,75 +59,82 @@ export async function subscribeMatchSSE(req: Request, res: Response) {
   }
   const userId = parseUserId.data;
 
+  const ttlMsParam = Number(req.query.ttlMs);
+  const SSE_WINDOW_MS = Number.isFinite(ttlMsParam) && ttlMsParam > 0
+    ? Math.min(ttlMsParam, 10 * 60 * 1000)
+    : 30_000;
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders?.();
 
-  res.write(": connected\n\n");
-
   const heartbeat = setInterval(() => {
     if (!res.writableEnded) res.write(`event: heartbeat\ndata: {}\n\n`);
   }, 15_000);
 
-  const SSE_WINDOW_MS = 30_000;
-  let lastSig = "";
-  let startedAt = new Date();
-  let ended = false;
-
-  const safeCleanup = () => {
-    if (ended) return;
-    ended = true;
+  const safeEnd = (event: "MATCH_FOUND" | "TIMEOUT", data: any) => {
+    if (res.writableEnded) return;
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
     clearInterval(heartbeat);
-    if (!res.writableEnded) res.end();
+    res.end();
   };
+
+  let startedAt = new Date();
+  try {
+    await checkIfUserInMatch(req, res);
+  } catch (e: any) {
+    if (e?.code === "ALREADY_IN_ACTIVE_SESSION") {
+      return safeEnd("MATCH_FOUND", { session: e.session });
+    }
+  }
 
   try {
     const initial = await getStatus(userId);
-    if ((initial as any)?.startedTime) startedAt = new Date((initial as any).startedTime as any);
-    writeSSE(res, "status", initial ?? { status: "not_found" });
-    lastSig = JSON.stringify(initial ?? {});
+    const st = (initial as any)?.startedTime;
+    if (st && !Number.isNaN(Date.parse(st))) {
+      startedAt = new Date(st);
+    }
   } catch {
-    // ignore; poll will try again
+    // ignore, will keep polling
   }
 
-  async function poll() {
-    if (ended || res.writableEnded) return;
+  let stopped = false;
+  const poll = async () => {
+    if (stopped || res.writableEnded) return;
 
     try {
       const status = await getStatus(userId);
-      const sig = JSON.stringify(status ?? {});
-      if (sig !== lastSig) {
-        lastSig = sig;
-        writeSSE(res, "status", status ?? { status: "not_found" });
-      }
-
-      const st = (status as any)?.startedTime;
-      if (st && !Number.isNaN(Date.parse(st))) startedAt = new Date(st);
-
       const s = status?.status;
 
-      if (s === "matched" || s === "cancelled" || s === "not_found") {
-        writeSSE(res, s ?? "not_found", status ?? {});
-        return safeCleanup();
+      if (s === "matched") {
+        return safeEnd("MATCH_FOUND", status ?? {});
       }
-
-      if (Date.now() - +startedAt > SSE_WINDOW_MS) {
-        writeSSE(res, "timeout", { message: "No match found", startedTime: startedAt });
-        return safeCleanup();
+      const st = (status as any)?.startedTime;
+      if (st && !Number.isNaN(Date.parse(st))) {
+        startedAt = new Date(st);
       }
-
     } catch {
-      writeSSE(res, "error", { message: "poll failed" });
-      // keep polling; do not end
+      // keep polling
     }
 
-    if (!ended && !res.writableEnded) setTimeout(poll, 1_000);
-  }
+    if (Date.now() - +startedAt > SSE_WINDOW_MS) {
+      stopped = true;
+      return safeEnd("TIMEOUT", { message: "No match found", startedTime: startedAt, ttlMs: SSE_WINDOW_MS });
+    }
+
+    setTimeout(poll, 1_000);
+  };
 
   poll();
-  req.on("close", safeCleanup);
+
+  req.on("close", () => {
+    stopped = true;
+    clearInterval(heartbeat);
+  });
 }
+
 
 export async function getMatchStatus(req: Request, res: Response) {
   try {
