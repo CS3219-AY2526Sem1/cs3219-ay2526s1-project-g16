@@ -23,7 +23,7 @@ export async function findMyActiveSession(userId: string) {
 }
 
 // ====== Session ops =====
-const DEFAULT_TTL_MIN = 90; // 90 mins session
+const DEFAULT_TTL_MIN = 90;
 
 export const createSession = async (
   roomId: string,
@@ -39,7 +39,7 @@ export const createSession = async (
       topic,
       difficulty,
       questionId: questionId ?? null,
-      expiresAt: expiresAt ?? null,
+      expiresAt: exp ?? null,
     },
     include: { participants: true },
   });

@@ -38,7 +38,7 @@ initConnection().then(async () => {
       } catch (e) {
         console.error("[sweeper] error:", e);
       }
-    }, 6000_000);  // reset to 60000 (every min) after demo
+    }, 6000_0);  
   })
   .catch((err) => {
     console.error(err);

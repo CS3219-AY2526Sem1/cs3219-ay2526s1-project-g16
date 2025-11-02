@@ -1,15 +1,19 @@
 # CS3219 project: PeerPrep
 
-## User Service
+## Collab Service
 
 ### Quick Start
 
-1. In the `user-service` directory, create a `.env` file.
+1. In the `collab-service` directory, create a `.env` file.
 2. Create a Postgres DB instance and obtain the connection string.
 3. Add the connection string to the `.env` file under the variable `DATABASE_URL`.
-4. Ensure you are in the `user-service` directory, then install project dependencies with `npm install`.
-5. Start the User Service with `npm start` or `npm run dev`.
-6. If the server starts successfully, you will see a "User service server listening on ..." message.
+4. Ensure you are in the `collab-service` directory, then install project dependencies with `npm install`.
+5. Start the Collab Service with `npm start` or `npm run dev`.
+6. If the server starts successfully, you will see:
+    [yws] Hocuspocus listening on .... | Redis=redis://:....
+    [API] Prisma connected
+    [API] Collab HTTP+WS gateway on port ... ; upstream y-websocket on ....
+7. Additionally, you will need a running Redis instance if testing locally.  
 
 ### Prisma
 
