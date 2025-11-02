@@ -29,3 +29,26 @@ export function decodeAccessToken(token: string): CustomJwtPayload {
     throw new Error(`Invalid token: ${(err as Error).message}`);
   }
 }
+
+const MATCHING_URL = "http://matching:3001";
+
+async function triggerSignal(userId: string) {
+  try {
+    const res = await fetch(`${MATCHING_URL}/signal/${userId}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) {
+      console.error(`Failed: ${res.status} ${res.statusText}`);
+      const text = await res.text();
+      console.error(text);
+      return;
+    }
+
+    const data = await res.json();
+    console.log("Signal sent:", data);
+  } catch (err) {
+    console.error("Error triggering signal:", err);
+  }
+}

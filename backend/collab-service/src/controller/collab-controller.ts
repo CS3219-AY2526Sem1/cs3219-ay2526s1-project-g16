@@ -10,7 +10,7 @@ import {
   sweepExpiredSessions,
   seedDocIfEmpty
 } from "../model/collab-model.ts";
-import { decodeAccessToken } from "./collab-utils.ts";
+import { decodeAccessToken, triggerSignal } from "./collab-utils.ts";
 
 const USER_SERVICE_BASE = process.env.USER_SERVICE_URL ?? "http://user:3000"; 
 
@@ -100,6 +100,7 @@ export async function createSession(req: Request, res: Response) {
       try {
         const user1Name = (await fetchUsernameById(user1ID)) ?? "";
         await _joinSession(session.id, { id: user1ID, username: user1Name });
+        await triggerSignal(user1ID)
       } catch (e) {
         console.warn("joinSession failed for user1:", e);
       }
@@ -110,6 +111,7 @@ export async function createSession(req: Request, res: Response) {
       try {
         const user2Name = (await fetchUsernameById(user2ID)) ?? "";
         await _joinSession(session.id, { id: user2ID, username: user2Name });
+        await triggerSignal(user2ID)
       } catch (e) {
         console.warn("joinSession failed for user2:", e);
       }
