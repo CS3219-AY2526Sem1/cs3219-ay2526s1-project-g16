@@ -40,6 +40,7 @@ export async function subscribeMatchSSE(req: Request, res: Response) {
   let startedAt = new Date();
 
   try {
+    await delay(5000);
     await checkIfUserInMatch(req, res);
   } catch (e: any) {
     if (e?.code === "ALREADY_IN_ACTIVE_SESSION") {
@@ -86,4 +87,8 @@ export async function subscribeMatchSSE(req: Request, res: Response) {
     clearInterval(heartbeat);
     clearTimeout(timeout);
   });
+}
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
