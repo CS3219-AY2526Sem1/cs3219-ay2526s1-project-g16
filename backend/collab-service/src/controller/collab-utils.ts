@@ -32,7 +32,7 @@ export function decodeAccessToken(token: string): CustomJwtPayload {
 
 const MATCHING_URL = "http://matching:3001";
 
-async function triggerSignal(userId: string) {
+export async function triggerSignal(userId: string) {
   try {
     const res = await fetch(`${MATCHING_URL}/signal/${userId}`, {
       method: "GET",
