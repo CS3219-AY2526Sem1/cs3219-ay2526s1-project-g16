@@ -3,6 +3,8 @@ import pgPkg from "pg";
 const { Client } = pgPkg;
 import axios from "axios";
 
+const COLLAB_BASE = process.env.COLLAB_SERVICE_URL ?? "http://collab:3009";
+
 type TicketChange = {
   userId: string;
   status: "QUEUED" | "MATCHED" | "CANCELLED" | "EXPIRED";
@@ -147,7 +149,7 @@ export function subscribeUser(userId: string, h: Handler): () => void {
 
 export async function findActiveSessionByUsername(username: string) {
   try {
-    const response = await axios.post(`${process.env.COLLAB_SERVICE_URL}/sessions/active/username`, {
+    const response = await axios.post(`${COLLAB_BASE}/sessions/active/username`, {
       username,
     });
 
