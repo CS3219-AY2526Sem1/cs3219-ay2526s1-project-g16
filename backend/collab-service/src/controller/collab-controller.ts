@@ -100,7 +100,7 @@ export async function createSession(req: Request, res: Response) {
       try {
         const user1Name = (await fetchUsernameById(user1ID)) ?? "";
         await _joinSession(session.id, { id: user1ID, username: user1Name });
-        await triggerSignal(user1ID)
+        await triggerSignal(user1ID);
       } catch (e) {
         console.warn("joinSession failed for user1:", e);
       }
@@ -111,7 +111,7 @@ export async function createSession(req: Request, res: Response) {
       try {
         const user2Name = (await fetchUsernameById(user2ID)) ?? "";
         await _joinSession(session.id, { id: user2ID, username: user2Name });
-        await triggerSignal(user2ID)
+        await triggerSignal(user2ID);
       } catch (e) {
         console.warn("joinSession failed for user2:", e);
       }
