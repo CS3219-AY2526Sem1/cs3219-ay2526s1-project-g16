@@ -22,6 +22,15 @@ export async function findMyActiveSession(userId: string) {
   return row?.session ?? null;
 }
 
+// Returns status by username
+export async function findActiveSessionByUsername(username: string) {
+  const row = await prisma.participant.findFirst({
+    where: { username, leftAt: null, session: { status: "ACTIVE" } },
+    select: { session: true },
+  });
+  return row?.session ?? null;
+}
+
 // ====== Session ops =====
 const DEFAULT_TTL_MIN = 90;
 

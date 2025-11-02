@@ -6,12 +6,15 @@ import {
   endSession,
   getSession,
   getMyActiveSession,
+  getActiveSessionByUsername,
   runSweeperNow
 } from "../controller/collab-controller.ts";
 
 const router = express.Router();
 
 router.get("/sessions/active", getMyActiveSession);
+
+router.post("/sessions/active/username", getActiveSessionByUsername); // not secure
 
 router.post("/sessions", createSession);
 
