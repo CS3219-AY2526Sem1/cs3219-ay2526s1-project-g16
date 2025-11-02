@@ -12,7 +12,7 @@ import {
 } from "../model/collab-model.ts";
 import { decodeAccessToken } from "./collab-utils.ts";
 
-const USER_SERVICE_BASE = process.env.USER_SERVICE_BASE ?? "http://localhost:3000"; 
+const USER_SERVICE_BASE = process.env.USER_SERVICE_URL ?? "http://user:3000"; 
 
 // ====== Helpers ===== 
 
