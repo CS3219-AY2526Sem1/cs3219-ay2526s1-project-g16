@@ -17,11 +17,20 @@ dotenv.config();
 const port = process.env.PORT || 8080;
 
 const app = express();
+// app.set('trust proxy', 1);
 
-const frontend = process.env.FRONTEND_URL || 'http://localhost:8000';
+const DEFAULT_FRONTEND = 'http://localhost:8000';
+const frontend = process.env.FRONTEND_URL;
+
+if (frontend) {
+  console.log(`[CORS] Using configured FRONTEND_URL: ${frontend}`);
+} else {
+  console.warn(`[CORS] FRONTEND_URL not set, using default: ${DEFAULT_FRONTEND}`);
+}
+
 app.use(
   cors({
-    origin: frontend,
+    origin: frontend || DEFAULT_FRONTEND,
     credentials: true,
   })
 );
