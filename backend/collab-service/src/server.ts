@@ -11,10 +11,11 @@ import cookieParser from "cookie-parser";
 dotenv.config();
 
 const app = express();
+const frontend = process.env.FRONTEND_URL || 'http://localhost:8000';
 app.use(cookieParser());
 app.use(cors({
     credentials: true,
-    origin: ['http://localhost:3000', 'http://localhost:3009', 'http://127.0.0.1:3000', 'http://127.0.0.1:3009'], 
+    origin: ['http://localhost:3000', 'http://localhost:3009', 'http://127.0.0.1:3000', 'http://127.0.0.1:3009', frontend], 
 }));
 app.use(express.json());
 app.use("/", collabRoutes);
