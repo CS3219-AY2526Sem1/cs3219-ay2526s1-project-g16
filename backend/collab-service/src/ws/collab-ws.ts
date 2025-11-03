@@ -19,7 +19,6 @@ function verifyAccessToken(token: string) {
 async function authorize(roomId: string, user: { id: string; username?: string }) {
   await prisma.$transaction(async (tx) => {
     // Serialize joins per room (prevents race where two newcomers slip in)
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id}))`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${roomId}))`;
 
     // Check if session is active
@@ -28,38 +27,13 @@ async function authorize(roomId: string, user: { id: string; username?: string }
     if (session.status !== "ACTIVE") throw new Error("SESSION_NOT_ACTIVE");
     if (session.expiresAt && session.expiresAt.getTime() < Date.now()) throw new Error("SESSION_EXPIRED");
 
-    // Block if user is active in ANOTHER session (leftAt IS NULL & status ACTIVE) - at max 1 session
-    const otherActive = await tx.participant.findFirst({
-      where: {
-        userId: user.id,
-        leftAt: null,
-        NOT: { sessionId: roomId },
-        session: { status: "ACTIVE" },
-      },
-      select: { sessionId: true },
-    });
-    if (otherActive) {
-      const err: any = new Error("USER_ALREADY_IN_ACTIVE_SESSION");
-      err.sessionId = otherActive.sessionId;
-      throw err;
-    }
-
-    // Check if room is full
-    const existing = await tx.participant.findUnique({
+    // must already be a participant (pre-joined via createSession)
+    const participant = await tx.participant.findUnique({
       where: { sessionId_userId: { sessionId: roomId, userId: user.id } },
+      select: { id: true },
     });
-    const totalParticipants = await tx.participant.count({
-      where: { sessionId: roomId },
-    });
-    if (!existing && totalParticipants >= 2) throw new Error("ROOM_FULL");
-
-    // Participant joins the room
-    await tx.participant.upsert({
-      where: { sessionId_userId: { sessionId: roomId, userId: user.id } },
-      update: { leftAt: null, username: user.username ?? "" },
-      create: { sessionId: roomId, userId: user.id, username: user.username ?? "" },
-    });
-  }, { isolationLevel: 'Serializable' }); 
+    if (!participant) throw new Error("NOT_PARTICIPANT");
+  }); 
 }
 
 const TARGET_WS =  process.env.YWS_TARGET || "ws://127.0.0.1:1234";
