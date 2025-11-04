@@ -54,11 +54,12 @@ export async function runSweeperNow(req: Request, res: Response) {
 export async function getMyActiveSession(req: Request, res: Response) {
   try {
     const token = extractAccessToken(req);
-    if (!token) return res.status(401).json({ error: "Unauthorized" });
+    if (!token) return res.status(401).json({ error: "[collab-controller] Unauthorized" });
 
     const decoded = decodeAccessToken(token);
-    console.log("User's token is", decoded.sub);
-    const session = await findMyActiveSession(decoded.sub); //decoded.sub == user id
+    console.log("[collab-controller] User's id is", decoded.sub); // this works
+
+    const session = await findMyActiveSession(decoded.sub); 
     return res.status(200).json({ data: session }); // CollabSession or null
   } catch {
     return res.status(500).json({ error: "Internal server error: Cannot get active session." });
@@ -69,7 +70,7 @@ export async function getMyActiveSession(req: Request, res: Response) {
 export async function getActiveSessionByUsername(req: Request, res: Response) {
   try {
     const raw = (req.body?.username ?? "").toString().trim();
-    if (!raw) return res.status(400).json({ error: "username is required" });
+    if (!raw) return res.status(400).json({ error: "[collab-controller] username is required" });
     const username = raw;
 
     const session = await findActiveSessionByUsername(username);
