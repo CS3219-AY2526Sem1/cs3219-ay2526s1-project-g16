@@ -29,6 +29,10 @@ export const Route = createFileRoute("/_unauthenticated/register")({
 });
 
 function Register() {
+  const { auth } = Route.useRouteContext();
+  const { register, login } = auth;
+  const navigate = Route.useNavigate();
+
   const registerSchema = z
     .object({
       email: z.email("Invalid email address"),
@@ -51,8 +55,10 @@ function Register() {
     resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = (data: z.infer<typeof registerSchema>) => {
-    console.log(data);
+  const onSubmit = async (data: z.infer<typeof registerSchema>) => {
+    await register(data.email, data.username, data.password);
+    await login(data.email, data.password);
+    navigate({ to: "/" });
   };
 
   return (
@@ -97,7 +103,7 @@ function Register() {
               return (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
-                  <div className="flex relative items-center">
+                  <div className="relative flex items-center">
                     <FormControl>
                       <Input
                         placeholder="Password"
@@ -106,7 +112,7 @@ function Register() {
                       />
                     </FormControl>
                     <Button
-                      className="text-neutral-600 absolute right-0 hover:bg-transparent"
+                      className="absolute right-0 text-neutral-600 hover:bg-transparent"
                       onClick={() => setIsReveal(!isReveal)}
                       type="button"
                       variant="ghost"
@@ -128,7 +134,7 @@ function Register() {
               return (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
-                  <div className="flex relative items-center">
+                  <div className="relative flex items-center">
                     <FormControl>
                       <Input
                         placeholder="Password"
@@ -137,7 +143,7 @@ function Register() {
                       />
                     </FormControl>
                     <Button
-                      className="text-neutral-600 absolute right-0 hover:bg-transparent"
+                      className="absolute right-0 text-neutral-600 hover:bg-transparent"
                       onClick={() => setIsReveal(!isReveal)}
                       type="button"
                       variant="ghost"
