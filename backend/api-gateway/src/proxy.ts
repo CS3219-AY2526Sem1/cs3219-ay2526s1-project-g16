@@ -68,7 +68,7 @@ export const createQuestionProxy = () =>
     changeOrigin: true,
     logger: console,
     pathRewrite: {
-      '^/question': '', // Remove /questionBank prefix
+      '^/questionBank': '', // Remove /questionBank prefix
     },
     on: {
       proxyReq: (proxyReq, req, res) => {

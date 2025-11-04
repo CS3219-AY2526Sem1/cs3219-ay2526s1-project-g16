@@ -73,7 +73,7 @@ app.use("/match", authenticateJWT, matchProxy);
 
 // question service routes
 const questionProxy = createQuestionProxy();
-app.use("/question", authenticateJWT, questionProxy);
+app.use("/questionBank", authenticateJWT, questionProxy);
 
 app.listen(port, () => {
   console.log(`API gateway running on port ${port}. Frontend URL: ${frontend}`);
