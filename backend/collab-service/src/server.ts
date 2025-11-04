@@ -13,9 +13,16 @@ dotenv.config();
 const app = express();
 app.use(cookieParser());
 app.use(cors({
-    credentials: true,
-    origin: ['http://localhost:3000', 'http://localhost:3009', 'http://127.0.0.1:3000', 'http://127.0.0.1:3009'], 
+  credentials: true,
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3009',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3009',
+    'https://34.142.162.255:8000', 
+  ],
 }));
+
 app.use(express.json());
 app.use("/", collabRoutes);
 

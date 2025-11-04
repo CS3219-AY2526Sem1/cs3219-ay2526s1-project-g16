@@ -8,6 +8,7 @@ import { authFetch } from "@/lib/utils";
 import { QN_SERVICE_URL } from "@/constants";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
 
+// Are these correct?
 const WS_BASE = import.meta.env.VITE_COLLAB_WS_URL ?? "ws://localhost:3009/collab/ws";
 const HTTP_BASE = import.meta.env.VITE_COLLAB_HTTP_URL ?? "http://localhost:3009/collab";
 
@@ -67,23 +68,25 @@ function CollaborationSpace() {
   const token = search.token ?? "";
   const lang = (search.lang ?? "javascript") as string;
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const editorRef = useRef<any>(null);
-  const modelRef = useRef<any>(null);
-  const providerRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);  // editor DOM
+  const editorRef = useRef<any>(null);                       // Monaco editor instance
+  const modelRef = useRef<any>(null);                        // Monaco model
+  const providerRef = useRef<any>(null);                     // Hocuspocus (Yjs) provider
 
   const [status, setStatus] = useState("status: initializing…");
   const [readOnly, setReadOnly] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
+  const [derivedQid, setDerivedQid] = useState<string | undefined>(undefined); 
 
   const missingToken = !token;
 
+  // Safety net if users refreshes or navigates to /collab without roomId in URL
   const sessionQ = useQuery({
     queryKey: ["collab-session-active"],
     queryFn: async (): Promise<CollabSession | null> => {
       try {
-        const res = await authFetch(`${HTTP_BASE}/sessions/active`, { method: "GET" });
+        const res = await authFetch(`${HTTP_BASE}/sessions/active`, { method: "GET" }); // will this work with the user cookie! (retrieve jwt correctly)
         if (res.status === 404) return null;
         if (!res.ok) throw new Error("Failed to fetch active session");
         const { data } = await res.json();
@@ -96,6 +99,7 @@ function CollaborationSpace() {
     refetchOnWindowFocus: "always",
   });
 
+  // Choose roomId from SSE or from sessionQ (check for active session)
   const roomId = useMemo(
     () => urlRoomId || sessionQ.data?.id || "",
     [urlRoomId, sessionQ.data?.id]
@@ -104,13 +108,35 @@ function CollaborationSpace() {
   const QN_BASE = (QN_SERVICE_URL && QN_SERVICE_URL.trim()) || "http://localhost:3001";
   const effectiveBase = QN_BASE.replace(/\/+$/, "");
 
+    // Retrieve question
+  const sessionByIdQ = useQuery({
+    queryKey: ["collab-session", roomId],
+    enabled: !!roomId,            // only when we know the room
+    queryFn: async (): Promise<CollabSession | null> => {
+      const res = await authFetch(`${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`, { method: "GET" });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error("Failed to fetch session");
+      const { data } = await res.json();
+      return (data ?? null) as CollabSession | null;
+    },
+    staleTime: 15_000,
+  });
+
+  useEffect(() => {
+  if (!qidToUse && sessionByIdQ.data?.questionId) {
+    setDerivedQid(sessionByIdQ.data.questionId);
+  }
+  }, [qidToUse, sessionByIdQ.data?.questionId]);
+
+  const qid = qidToUse || derivedQid || "";
+
   const questionQ = useQuery({
-    queryKey: ["collab-question", qidToUse, effectiveBase],
-    enabled: !!qidToUse,
+    queryKey: ["collab-question", qid, effectiveBase],
+    enabled: !!qid,
     retry: 0,
     refetchOnWindowFocus: "always",
     queryFn: async (): Promise<Question> => {
-      const res = await fetch(`${effectiveBase}/questions/${encodeURIComponent(qidToUse)}`, {
+      const res = await fetch(`${effectiveBase}/questions/${encodeURIComponent(qid)}`, {
         headers: { Accept: "application/json" },
         mode: "cors",
       });
@@ -118,8 +144,7 @@ function CollaborationSpace() {
         const text = await res.text().catch(() => "");
         throw new Error(`Question fetch failed: ${res.status} ${text}`);
       }
-      const data = await res.json();
-      return data;
+      return await res.json();
     },
   });
 
@@ -140,19 +165,23 @@ function CollaborationSpace() {
       ]);
       if (disposed) return;
 
+      // 1) connect Yjs provider (through WS auth/proxy)
       const wsUrl = `${WS_BASE}/${encodeURIComponent(roomId)}?token=${encodeURIComponent(token)}`;
       const provider = new HocuspocusProvider({ url: wsUrl, name: roomId });
       providerRef.current = provider;
 
+      // 2) prepare Yjs document + text
       const ydoc = provider.document as InstanceType<typeof Y.Doc>;
       const ytext = ydoc.getText("code");
       ydoc.getMap("meta");
 
       provider.on("status", (e: any) => setStatus(`status: ${e.status} to room ${roomId}`));
 
-      const initial = getTemplateFor((lang as keyof typeof templates) || "javascript");
-      if (ytext.length === 0) ytext.insert(0, initial);
+      // 3) initial template if doc is empty - i will leave empty for test
+      // const initial = getTemplateFor((lang as keyof typeof templates) || "javascript");
+      // if (ytext.length === 0) ytext.insert(0, initial);
 
+      // 4) create Monaco model + editor
       const model = monaco.editor.createModel(ytext.toString(), lang || "javascript");
       modelRef.current = model;
 
@@ -168,8 +197,10 @@ function CollaborationSpace() {
       });
       editorRef.current = editor;
 
+      // 5) bind Yjs <-> Monaco
       new MonacoBinding(ytext, model, new Set([editor]), provider.awareness);
 
+      // 6) poll session liveness; if not ACTIVE → make editor readOnly
       const poller = setInterval(async () => {
         try {
           const resp = await fetch(`${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`, {
@@ -189,6 +220,7 @@ function CollaborationSpace() {
         }
       }, 2000);
 
+      // cleanup on unmount/navigation/refresh
       const cleanup = () => {
         clearInterval(poller);
         try { provider.destroy(); } catch {}
@@ -209,14 +241,14 @@ function CollaborationSpace() {
   const title =
     search.qtitle ??
     questionQ.data?.title ??
-    (questionQ.isLoading ? "Loading question…" : qidToUse ? "Question unavailable" : "Unavailable Room.");
+    (questionQ.isLoading ? "Loading question…" : qid ? "Question unavailable" : "Unavailable Room.");
 
   const statement =
     (search.q ?? undefined) ??
     questionQ.data?.statement ??
     (questionQ.isError
       ? "Failed to load question."
-      : qidToUse
+      : qid
         ? "Fetching question…"
         : "Unavailable room. Please try to get a Match again.");
 
