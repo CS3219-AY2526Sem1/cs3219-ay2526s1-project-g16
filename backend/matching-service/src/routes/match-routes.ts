@@ -13,6 +13,6 @@ router.post("/cancel", /*authenticateJWT,*/ cancelMatch);
 
 router.get("/subscribe/:userId", subscribeMatchSSE);
 
-router.get("/signal/:userId", signalMatchFound);
+router.post("/signal/:userId", signalMatchFound);
 
 export default router;

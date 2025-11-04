@@ -9,12 +9,12 @@ dotenv.config();
 
 const app = express();
 
-// Use cors to allow frontend URL to access this app.
+const frontend = process.env.FRONTEND_URL || 'http://localhost:8000';
 app.use(
   cors({
-    origin: "http://localhost:8000", // frontend url
+    origin: frontend,
     credentials: true,
-  }),
+  })
 );
 
 app.use(cookieParser());

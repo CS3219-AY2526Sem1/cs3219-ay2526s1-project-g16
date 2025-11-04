@@ -82,8 +82,22 @@ export async function subscribeMatchSSE(req: Request, res: Response) {
 
   const safeEnd = (event: "MATCH_FOUND" | "TIMEOUT", data: any) => {
     if (res.writableEnded) return;
+
+    let roomId: string | null = null;
+    if (data && typeof data === "object") {
+      const d = data as any;
+      if (d.session && typeof d.session === "object" && d.session.roomId) {
+        roomId = String(d.session.roomId);
+      } else if (d.roomId) {
+        roomId = String(d.roomId);
+      }
+    }
+
     try {
       res.write(`event: ${event}\n`);
+      if (roomId) {
+        res.write(`roomId: ${roomId}\n`);
+      }
       res.write(`data: ${JSON.stringify(data)}\n\n`);
     } catch { /* ignore write errors */ }
     stopped = true;
@@ -129,13 +143,18 @@ export async function subscribeMatchSSE(req: Request, res: Response) {
 }
 
 export function signalMatchFound(req: Request, res: Response) {
-  const parsed = z.string().min(1).safeParse(req.params.userId);
-  if (!parsed.success) return res.status(400).json({ error: "Invalid userId" });
-  const userId = parsed.data;
+  const parsedUserId = z.string().min(1).safeParse(req.params.userId);
+  if (!parsedUserId.success) return res.status(400).json({ error: "Invalid userId" });
+  const userId = parsedUserId.data;
 
+  const parsedRoomId = z.string().min(1).optional().safeParse(req.body?.roomId ?? req.query?.roomId);
+  const roomId = parsedRoomId.success ? parsedRoomId.data : undefined;
+
+  console.log("[DEBUG] Sending roomId: ", roomId)
   const payload = {
     session: {
       userId,
+      roomId: roomId ?? null,
       via: "manual-signal",
       at: new Date().toISOString(),
     },
@@ -146,5 +165,6 @@ export function signalMatchFound(req: Request, res: Response) {
   if (delivered === 0) {
     return res.status(404).json({ error: "No live SSE subscribers for userId" });
   }
-  return res.json({ ok: true, delivered });
+
+  return res.json({ ok: true, delivered, userId, roomId });
 }
