@@ -15,6 +15,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as UnauthenticatedRegisterRouteImport } from './routes/_unauthenticated/register'
 import { Route as UnauthenticatedLoginRouteImport } from './routes/_unauthenticated/login'
 import { Route as AuthenticatedManageQuestionsRouteImport } from './routes/_authenticated/manage-questions'
+import { Route as AuthenticatedCollabRouteImport } from './routes/_authenticated/collab'
 
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
@@ -45,14 +46,21 @@ const AuthenticatedManageQuestionsRoute =
     path: '/manage-questions',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCollabRoute = AuthenticatedCollabRouteImport.update({
+  id: '/collab',
+  path: '/collab',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
+  '/collab': typeof AuthenticatedCollabRoute
   '/manage-questions': typeof AuthenticatedManageQuestionsRoute
   '/login': typeof UnauthenticatedLoginRoute
   '/register': typeof UnauthenticatedRegisterRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesByTo {
+  '/collab': typeof AuthenticatedCollabRoute
   '/manage-questions': typeof AuthenticatedManageQuestionsRoute
   '/login': typeof UnauthenticatedLoginRoute
   '/register': typeof UnauthenticatedRegisterRoute
@@ -62,6 +70,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
+  '/_authenticated/collab': typeof AuthenticatedCollabRoute
   '/_authenticated/manage-questions': typeof AuthenticatedManageQuestionsRoute
   '/_unauthenticated/login': typeof UnauthenticatedLoginRoute
   '/_unauthenticated/register': typeof UnauthenticatedRegisterRoute
@@ -69,13 +78,14 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/manage-questions' | '/login' | '/register' | '/'
+  fullPaths: '/collab' | '/manage-questions' | '/login' | '/register' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/manage-questions' | '/login' | '/register' | '/'
+  to: '/collab' | '/manage-questions' | '/login' | '/register' | '/'
   id:
     | '__root__'
     | '/_authenticated'
     | '/_unauthenticated'
+    | '/_authenticated/collab'
     | '/_authenticated/manage-questions'
     | '/_unauthenticated/login'
     | '/_unauthenticated/register'
@@ -131,15 +141,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedManageQuestionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/collab': {
+      id: '/_authenticated/collab'
+      path: '/collab'
+      fullPath: '/collab'
+      preLoaderRoute: typeof AuthenticatedCollabRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCollabRoute: typeof AuthenticatedCollabRoute
   AuthenticatedManageQuestionsRoute: typeof AuthenticatedManageQuestionsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCollabRoute: AuthenticatedCollabRoute,
   AuthenticatedManageQuestionsRoute: AuthenticatedManageQuestionsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
