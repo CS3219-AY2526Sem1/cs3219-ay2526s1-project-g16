@@ -15,6 +15,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as UnauthenticatedRegisterRouteImport } from './routes/_unauthenticated/register'
 import { Route as UnauthenticatedLoginRouteImport } from './routes/_unauthenticated/login'
 import { Route as AuthenticatedManageQuestionsRouteImport } from './routes/_authenticated/manage-questions'
+import { Route as AuthenticatedUserUserIdRouteImport } from './routes/_authenticated/user.$userId'
 
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
@@ -45,18 +46,25 @@ const AuthenticatedManageQuestionsRoute =
     path: '/manage-questions',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedUserUserIdRoute = AuthenticatedUserUserIdRouteImport.update({
+  id: '/user/$userId',
+  path: '/user/$userId',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/manage-questions': typeof AuthenticatedManageQuestionsRoute
   '/login': typeof UnauthenticatedLoginRoute
   '/register': typeof UnauthenticatedRegisterRoute
   '/': typeof AuthenticatedIndexRoute
+  '/user/$userId': typeof AuthenticatedUserUserIdRoute
 }
 export interface FileRoutesByTo {
   '/manage-questions': typeof AuthenticatedManageQuestionsRoute
   '/login': typeof UnauthenticatedLoginRoute
   '/register': typeof UnauthenticatedRegisterRoute
   '/': typeof AuthenticatedIndexRoute
+  '/user/$userId': typeof AuthenticatedUserUserIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,12 +74,18 @@ export interface FileRoutesById {
   '/_unauthenticated/login': typeof UnauthenticatedLoginRoute
   '/_unauthenticated/register': typeof UnauthenticatedRegisterRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/user/$userId': typeof AuthenticatedUserUserIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/manage-questions' | '/login' | '/register' | '/'
+  fullPaths:
+    | '/manage-questions'
+    | '/login'
+    | '/register'
+    | '/'
+    | '/user/$userId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/manage-questions' | '/login' | '/register' | '/'
+  to: '/manage-questions' | '/login' | '/register' | '/' | '/user/$userId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -80,6 +94,7 @@ export interface FileRouteTypes {
     | '/_unauthenticated/login'
     | '/_unauthenticated/register'
     | '/_authenticated/'
+    | '/_authenticated/user/$userId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -131,17 +146,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedManageQuestionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/user/$userId': {
+      id: '/_authenticated/user/$userId'
+      path: '/user/$userId'
+      fullPath: '/user/$userId'
+      preLoaderRoute: typeof AuthenticatedUserUserIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedManageQuestionsRoute: typeof AuthenticatedManageQuestionsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedUserUserIdRoute: typeof AuthenticatedUserUserIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedManageQuestionsRoute: AuthenticatedManageQuestionsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedUserUserIdRoute: AuthenticatedUserUserIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
