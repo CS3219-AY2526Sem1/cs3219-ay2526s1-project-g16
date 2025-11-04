@@ -85,24 +85,22 @@ export async function getActiveSessionByUsername(req: Request, res: Response) {
 // Frontend should retrieve question based on session.questionId after joinSession
 export async function createSession(req: Request, res: Response) {
   try {
-    const { topic, difficulty, questionId, roomId, expiresAt, user1ID, user2ID, id } = req.body; 
-  
+    const { topic, difficulty, questionId, id, expiresAt, user1ID, user2ID } = req.body; 
+    
     const session = await _createSession(
-      roomId,
+      id,
       topic, 
       difficulty, 
       questionId,
       expiresAt ? new Date(expiresAt) : undefined
     );
-    console.log(`[DEBUG] Sending roomId: ${id}`);
-
     // upsert both users - _joinSession
     if (user1ID) {
       try {
         const user1Name = (await fetchUsernameById(user1ID)) ?? "";
         await _joinSession(session.id, { id: user1ID, username: user1Name });
-        console.log(`[DEBUG] Sending roomId: ${roomId}`);
-        await triggerSignal(user1ID, roomId);
+        console.log(`[DEBUG] Sending id: ${id}`);
+        await triggerSignal(user1ID, id);
       } catch (e) {
         console.warn("joinSession failed for user1:", e);
       }
@@ -113,8 +111,8 @@ export async function createSession(req: Request, res: Response) {
       try {
         const user2Name = (await fetchUsernameById(user2ID)) ?? "";
         await _joinSession(session.id, { id: user2ID, username: user2Name });
-        console.log(`[DEBUG] Sending roomId: ${roomId}`);
-        await triggerSignal(user2ID, roomId);
+        console.log(`[DEBUG] Sending id: ${id}`);
+        await triggerSignal(user2ID, id);
       } catch (e) {
         console.warn("joinSession failed for user2:", e);
       }
