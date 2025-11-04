@@ -52,7 +52,7 @@ export const createQuestion = async (data: {
 /* Read a Question by ID (active qns only) */
 export const getQuestionById = async (id: number) => {
   return prisma.question.findFirst({
-    where: { id, deletedAt: null },
+    where: { id },
     include: { topics: { include: { topic: true } } },
   });
 };
