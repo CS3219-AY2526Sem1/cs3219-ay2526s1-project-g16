@@ -46,6 +46,7 @@ const limiter = rateLimit({
   message: "Too many requests from this IP, please try again later.",
 });
 app.use(limiter);
+app.set('trust proxy', true);
 
 // user service routes - no authentication or authorization required
 const userProxy = createUserProxy();
