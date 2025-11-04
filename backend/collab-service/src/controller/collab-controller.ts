@@ -57,6 +57,7 @@ export async function getMyActiveSession(req: Request, res: Response) {
     if (!token) return res.status(401).json({ error: "Unauthorized" });
 
     const decoded = decodeAccessToken(token);
+    console.log("User's token is", decoded.sub);
     const session = await findMyActiveSession(decoded.sub); //decoded.sub == user id
     return res.status(200).json({ data: session }); // CollabSession or null
   } catch {
