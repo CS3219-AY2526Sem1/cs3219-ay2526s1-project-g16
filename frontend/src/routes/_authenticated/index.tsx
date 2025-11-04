@@ -12,7 +12,7 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -24,6 +24,7 @@ function Home() {
   const [difficultyLevels, setDifficultyLevels] = useState<string[]>([""]);
   const [languages, setLanguages] = useState<string[]>([""]);
   const [subscribeUrl, setSubscribeUrl] = useState<string | null>(null);
+  const [questionSearch, setQuestionSearch] = useState("");
 
   const { auth } = Route.useRouteContext();
   const { user } = auth;
@@ -158,6 +159,31 @@ function Home() {
     return "-";
   };
 
+          const filteredQuestions = useMemo(() => {
+    const search = questionSearch.trim().toLowerCase();
+    if (!search) {
+      return questionsQuery.data?.items ?? [];
+    }
+
+    return (
+      questionsQuery.data?.items?.filter((q) => {
+        const title = q.title?.toLowerCase?.() ?? "";
+        const difficulty =
+          ("difficulty" in q && q.difficulty
+            ? q.difficulty
+            : ""
+          )?.toLowerCase?.() ?? "";
+        const topics = resolveTopicsForQuestion(q).toLowerCase();
+
+        return (
+          title.includes(search) ||
+          difficulty.includes(search) ||
+          topics.includes(search)
+        );
+      }) ?? []
+    );
+  }, [questionSearch, questionsQuery.data, resolveTopicsForQuestion]);
+
   return (
     <main className="mt-24 flex w-full flex-col items-center justify-center gap-8">
       {subscribeUrl ? (
@@ -249,10 +275,17 @@ function Home() {
               Match Me!
             </Button>
           )}
-          <div className="mt-10 mb-24 w-full max-w-5xl">
-            <h2 className="mb-4 text-left text-2xl font-semibold">
-              Questions 
-            </h2>
+          <div className="mb-24 mt-10 w-full max-w-5xl">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h2 className="text-left text-2xl font-semibold">Questions</h2>
+              {/* NEW: search input */}
+              <input
+                value={questionSearch}
+                onChange={(e) => setQuestionSearch(e.target.value)}
+                placeholder="Search questions..."
+                className="w-56 rounded-md border border-neutral-200 px-3 py-1.5 text-sm focus:border-neutral-400 focus:outline-none"
+              />
+            </div>
             {questionsQuery.isPending ? (
               <div className="flex items-center gap-2 text-neutral-600">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -279,7 +312,7 @@ function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {questionsQuery.data?.items?.map((q) => (
+                    {filteredQuestions.map((q) => (
                       <tr key={q.id ?? q.title} className="border-t">
                         <td className="px-4 py-2">{q.title}</td>
                         <td className="px-4 py-2">
@@ -292,6 +325,16 @@ function Home() {
                         </td>
                       </tr>
                     ))}
+                    {filteredQuestions.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className="px-4 py-4 text-center text-neutral-400"
+                        >
+                          No questions match your search.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
