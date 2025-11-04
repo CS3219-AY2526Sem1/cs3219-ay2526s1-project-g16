@@ -15,6 +15,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as UnauthenticatedRegisterRouteImport } from './routes/_unauthenticated/register'
 import { Route as UnauthenticatedLoginRouteImport } from './routes/_unauthenticated/login'
 import { Route as AuthenticatedManageQuestionsRouteImport } from './routes/_authenticated/manage-questions'
+import { Route as AuthenticatedCollabRouteImport } from './routes/_authenticated/collab'
 import { Route as AuthenticatedUserUserIdRouteImport } from './routes/_authenticated/user.$userId'
 
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
@@ -46,6 +47,11 @@ const AuthenticatedManageQuestionsRoute =
     path: '/manage-questions',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCollabRoute = AuthenticatedCollabRouteImport.update({
+  id: '/collab',
+  path: '/collab',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedUserUserIdRoute = AuthenticatedUserUserIdRouteImport.update({
   id: '/user/$userId',
   path: '/user/$userId',
@@ -53,6 +59,7 @@ const AuthenticatedUserUserIdRoute = AuthenticatedUserUserIdRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/collab': typeof AuthenticatedCollabRoute
   '/manage-questions': typeof AuthenticatedManageQuestionsRoute
   '/login': typeof UnauthenticatedLoginRoute
   '/register': typeof UnauthenticatedRegisterRoute
@@ -60,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/user/$userId': typeof AuthenticatedUserUserIdRoute
 }
 export interface FileRoutesByTo {
+  '/collab': typeof AuthenticatedCollabRoute
   '/manage-questions': typeof AuthenticatedManageQuestionsRoute
   '/login': typeof UnauthenticatedLoginRoute
   '/register': typeof UnauthenticatedRegisterRoute
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
+  '/_authenticated/collab': typeof AuthenticatedCollabRoute
   '/_authenticated/manage-questions': typeof AuthenticatedManageQuestionsRoute
   '/_unauthenticated/login': typeof UnauthenticatedLoginRoute
   '/_unauthenticated/register': typeof UnauthenticatedRegisterRoute
@@ -79,17 +88,25 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/collab'
     | '/manage-questions'
     | '/login'
     | '/register'
     | '/'
     | '/user/$userId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/manage-questions' | '/login' | '/register' | '/' | '/user/$userId'
+  to:
+    | '/collab'
+    | '/manage-questions'
+    | '/login'
+    | '/register'
+    | '/'
+    | '/user/$userId'
   id:
     | '__root__'
     | '/_authenticated'
     | '/_unauthenticated'
+    | '/_authenticated/collab'
     | '/_authenticated/manage-questions'
     | '/_unauthenticated/login'
     | '/_unauthenticated/register'
@@ -146,6 +163,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedManageQuestionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/collab': {
+      id: '/_authenticated/collab'
+      path: '/collab'
+      fullPath: '/collab'
+      preLoaderRoute: typeof AuthenticatedCollabRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/user/$userId': {
       id: '/_authenticated/user/$userId'
       path: '/user/$userId'
@@ -157,12 +181,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCollabRoute: typeof AuthenticatedCollabRoute
   AuthenticatedManageQuestionsRoute: typeof AuthenticatedManageQuestionsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedUserUserIdRoute: typeof AuthenticatedUserUserIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCollabRoute: AuthenticatedCollabRoute,
   AuthenticatedManageQuestionsRoute: AuthenticatedManageQuestionsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedUserUserIdRoute: AuthenticatedUserUserIdRoute,

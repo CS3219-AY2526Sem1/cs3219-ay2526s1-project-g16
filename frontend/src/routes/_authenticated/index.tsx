@@ -5,13 +5,14 @@ import { authFetch } from "@/lib/utils";
 import {
   questionDifficulties,
   type ListLanguagesResponse,
+  type ListQuestionsResponse,
   type ListTopicsResponse,
   type MatchResponse,
 } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -23,6 +24,7 @@ function Home() {
   const [difficultyLevels, setDifficultyLevels] = useState<string[]>([""]);
   const [languages, setLanguages] = useState<string[]>([""]);
   const [subscribeUrl, setSubscribeUrl] = useState<string | null>(null);
+  const [questionSearch, setQuestionSearch] = useState("");
 
   const { auth } = Route.useRouteContext();
   const { user } = auth;
@@ -44,6 +46,17 @@ function Home() {
       const res = await authFetch(`${QN_SERVICE_URL}/languages`);
       if (!res.ok) {
         throw new Error("Languages response was not ok");
+      }
+      return res.json();
+    },
+  });
+
+  const questionsQuery = useQuery<ListQuestionsResponse>({
+    queryKey: ["questions"],
+    queryFn: async () => {
+      const res = await authFetch(`${QN_SERVICE_URL}/questions`);
+      if (!res.ok) {
+        throw new Error("Questions response was not ok");
       }
       return res.json();
     },
@@ -116,6 +129,60 @@ function Home() {
       id: "data-load-error",
     });
   }
+
+  const resolveTopicsForQuestion = (q: any) => {
+    const allTopics = topicsQuery.data?.topics ?? [];
+
+    if (!q?.topics) return "-";
+
+    if (Array.isArray(q.topics) && typeof q.topics[0] === "string") {
+      return q.topics.join(", ");
+    }
+
+    if (Array.isArray(q.topics)) {
+      const names = q.topics
+        .map((t: any) => {
+          if (t?.name) return t.name;
+          if (t?.topic?.name) return t.topic.name;
+          if (t?.topicId) {
+            const match = allTopics.find(
+              (at) => at.id === t.topicId || at.name === t.topicId,
+            );
+            return match?.name ?? null;
+          }
+          return null;
+        })
+        .filter(Boolean);
+      return names.length ? names.join(", ") : "-";
+    }
+
+    return "-";
+  };
+
+  const filteredQuestions = useMemo(() => {
+    const search = questionSearch.trim().toLowerCase();
+    if (!search) {
+      return questionsQuery.data?.items ?? [];
+    }
+
+    return (
+      questionsQuery.data?.items?.filter((q) => {
+        const title = q.title?.toLowerCase?.() ?? "";
+        const difficulty =
+          ("difficulty" in q && q.difficulty
+            ? q.difficulty
+            : ""
+          )?.toLowerCase?.() ?? "";
+        const topics = resolveTopicsForQuestion(q).toLowerCase();
+
+        return (
+          title.includes(search) ||
+          difficulty.includes(search) ||
+          topics.includes(search)
+        );
+      }) ?? []
+    );
+  }, [questionSearch, questionsQuery.data, resolveTopicsForQuestion]);
 
   return (
     <main className="mt-24 flex w-full flex-col items-center justify-center gap-8">
@@ -208,6 +275,70 @@ function Home() {
               Match Me!
             </Button>
           )}
+          <div className="mb-24 mt-10 w-full max-w-5xl">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h2 className="text-left text-2xl font-semibold">Questions</h2>
+              <input
+                value={questionSearch}
+                onChange={(e) => setQuestionSearch(e.target.value)}
+                placeholder="Search questions..."
+                className="w-56 rounded-md border border-neutral-200 px-3 py-1.5 text-sm focus:border-neutral-400 focus:outline-none"
+              />
+            </div>
+            {questionsQuery.isPending ? (
+              <div className="flex items-center gap-2 text-neutral-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading questions...
+              </div>
+            ) : questionsQuery.isError ? (
+              <div className="text-sm text-red-500">
+                Failed to load questions.
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border bg-white">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-neutral-50">
+                    <tr>
+                      <th className="px-4 py-2 font-medium text-neutral-700">
+                        Name
+                      </th>
+                      <th className="px-4 py-2 font-medium text-neutral-700">
+                        Difficulty
+                      </th>
+                      <th className="px-4 py-2 font-medium text-neutral-700">
+                        Topics
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredQuestions.map((q) => (
+                      <tr key={q.id ?? q.title} className="border-t">
+                        <td className="px-4 py-2">{q.title}</td>
+                        <td className="px-4 py-2">
+                          {"difficulty" in q && q.difficulty
+                            ? q.difficulty
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-2">
+                          {resolveTopicsForQuestion(q)}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredQuestions.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className="px-4 py-4 text-center text-neutral-400"
+                        >
+                          No questions match your search.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </>
       )}
     </main>

@@ -115,10 +115,11 @@ export async function checkIfUserInMatch(req: Request, _res: Response): Promise<
     const e: any = new Error("Not Expected Error Thrown");
     throw e;
   }
-
-  const body = (await resp.json()) as { data: CollabSession | null };
+  const bodyy = await resp.json();
+  console.log("[DEBUG] raw body:", bodyy);
+  const body = bodyy as { data: CollabSession | null };
   const active = body?.data ?? null;
-
+  console.log(`[DEBUG Error #1] active ${body?.data}`);
   if (active && active.status === "ACTIVE") {
     const e: any = new Error("User already in active session");
     e.code = "ALREADY_IN_ACTIVE_SESSION";
