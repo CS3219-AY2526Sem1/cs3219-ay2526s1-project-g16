@@ -152,7 +152,7 @@ export function signalMatchFound(req: Request, res: Response) {
 
   console.log(`[DEBUG] Sending roomId: ${roomId}`);
   const payload = {
-    session: 
+    session: {
       userId,
       roomId: roomId ?? null,
       via: "manual-signal",
