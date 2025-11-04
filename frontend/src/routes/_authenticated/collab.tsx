@@ -176,6 +176,7 @@ function CollaborationSpace() {
       ydoc.getMap("meta");
 
       provider.on("status", (e: any) => setStatus(`status: ${e.status} to room ${roomId}`));
+      provider.on("close", () => setStatus(`status: closed (upgrade failed or server closed)`));
 
       // 3) initial template if doc is empty - i will leave empty for test
       // const initial = getTemplateFor((lang as keyof typeof templates) || "javascript");
