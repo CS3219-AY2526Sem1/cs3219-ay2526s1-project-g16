@@ -46,25 +46,10 @@ export type Language = {
   name: string;
 };
 
-type MatchResult =
-  | {
-      status: "matched";
-      roomId: string;
-      partnerId: string;
-      startedTime?: Date;
-      expiresAt?: Date;
-    }
-  | { status: "queued"; expiresAt: Date; startedTime?: Date }
-  | { status: "cancelled"; startedTime?: Date }
-  | { status: "not_found"; startedTime?: Date }
-  | {
-      status: "already_matched";
-      roomId: string;
-      partnerId: string;
-      startedTime?: Date;
-      expiresAt?: Date;
-    };
+export type MatchResult =
+  | { status: "MATCH_FOUND"; roomId: string }
+  | { status: "TIMEOUT" };
 
-export type MatchResponse = MatchResult & {
+export type MatchResponse = {
   subscribeUrl: string;
 };
