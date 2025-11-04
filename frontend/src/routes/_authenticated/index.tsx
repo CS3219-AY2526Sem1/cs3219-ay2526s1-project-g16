@@ -159,7 +159,7 @@ function Home() {
     return "-";
   };
 
-          const filteredQuestions = useMemo(() => {
+  const filteredQuestions = useMemo(() => {
     const search = questionSearch.trim().toLowerCase();
     if (!search) {
       return questionsQuery.data?.items ?? [];
@@ -278,7 +278,6 @@ function Home() {
           <div className="mb-24 mt-10 w-full max-w-5xl">
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="text-left text-2xl font-semibold">Questions</h2>
-              {/* NEW: search input */}
               <input
                 value={questionSearch}
                 onChange={(e) => setQuestionSearch(e.target.value)}
