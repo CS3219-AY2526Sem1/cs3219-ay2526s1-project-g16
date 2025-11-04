@@ -7,7 +7,6 @@ import {
   type ListLanguagesResponse,
   type ListQuestionsResponse,
   type ListTopicsResponse,
-  type MatchResponse,
   type MatchResult,
 } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -64,7 +63,7 @@ function Home() {
   });
 
   const findMatchMutation = useMutation({
-    mutationFn: async (): Promise<MatchResponse> => {
+    mutationFn: async (): Promise<void> => {
       const res = await authFetch(`${MATCH_SERVICE_URL}/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,8 +79,8 @@ function Home() {
       }
       return res.json();
     },
-    onSuccess: (data) => {
-      setSubscribeUrl(data.subscribeUrl);
+    onSuccess: () => {
+      setSubscribeUrl(`${MATCH_SERVICE_URL}/subscribe/${user?.id}`);
     },
   });
 
@@ -115,8 +114,8 @@ function Home() {
       eventSource.addEventListener("MATCH_FOUND", (event) => {
         const { roomId }: Extract<MatchResult, { status: "MATCH_FOUND" }> =
           JSON.parse(event.data);
-        setSubscribeUrl(null);
         console.log("Matched! Room ID:", roomId);
+        setSubscribeUrl(null);
       });
     }
     return () => {
