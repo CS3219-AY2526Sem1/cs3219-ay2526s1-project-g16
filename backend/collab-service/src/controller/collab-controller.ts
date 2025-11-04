@@ -89,6 +89,7 @@ export async function createSession(req: Request, res: Response) {
   try {
     const { topic, difficulty, questionId, id, expiresAt, user1ID, user2ID } = req.body; 
     
+    // Create collab session
     const session = await _createSession(
       id,
       topic, 
@@ -96,32 +97,48 @@ export async function createSession(req: Request, res: Response) {
       questionId,
       expiresAt ? new Date(expiresAt) : undefined
     );
-    // upsert both users - _joinSession
+
+    // Upsert - user1 join
     if (user1ID) {
       try {
         const user1Name = (await fetchUsernameById(user1ID)) ?? "";
         await _joinSession(session.id, { id: user1ID, username: user1Name });
-        console.log(`[DEBUG] Sending id: ${id}`);
-        await triggerSignal(user1ID, id);
-      } catch (e) {
-        console.warn("joinSession failed for user1:", e);
+        await triggerSignal(user1ID, session.id);
+      } 
+      
+      catch (e: any) {
+        if (e?.code === "P2002") {
+          const existing = await findMyActiveSession(user1ID);
+          return res.status(409).json({
+            error: "User already in an active session",
+            data: { userId: user1ID, existingSessionId: existing?.id ?? null },
+          });
+        }
+        console.error("[joinSession failed for user1:", e);
+        return res.status(500).json({ error: "Internal server error: user1 join failed." });
       }
     }
 
-    // upsert second user
+    // Upsert - user2 join
     if (user2ID) {
       try {
         const user2Name = (await fetchUsernameById(user2ID)) ?? "";
         await _joinSession(session.id, { id: user2ID, username: user2Name });
-        console.log(`[DEBUG] Sending id: ${id}`);
-        await triggerSignal(user2ID, id);
-      } catch (e) {
-        console.warn("joinSession failed for user2:", e);
+        await triggerSignal(user2ID, session.id);
+      } catch (e: any) {
+        if (e?.code === "P2002") {
+          const existing = await findMyActiveSession(user2ID);
+          return res.status(409).json({
+            error: "User already in an active session",
+            data: { userId: user2ID, existingSessionId: existing?.id ?? null },
+          });
+        }
+        console.error("joinSession failed for user2:", e);
+        return res.status(500).json({ error: "Internal server error: user2 join failed." });
       }
     }
 
     const fresh = await _getSession(session.id);
-
     return res.status(201).json({ data: { fresh } });
   } catch (e) {
     console.error("Error creating session:", e); 
