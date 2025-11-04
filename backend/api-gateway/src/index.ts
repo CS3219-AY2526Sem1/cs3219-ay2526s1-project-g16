@@ -39,6 +39,7 @@ app.use(
 app.use(cookieParser());
 
 // Add rate limiter
+app.set('trust proxy', true);
 const limiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
   max: 100, // limit each IP to 100 requests per windowMs
@@ -46,7 +47,6 @@ const limiter = rateLimit({
   message: "Too many requests from this IP, please try again later.",
 });
 app.use(limiter);
-app.set('trust proxy', true);
 
 // user service routes - no authentication or authorization required
 const userProxy = createUserProxy();
