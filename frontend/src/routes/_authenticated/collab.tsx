@@ -400,22 +400,22 @@ function CollaborationSpace() {
   );
 }
 
-const templates = {
-  javascript: `// JS
-function main(){ console.log('hello'); }`,
-  typescript: `// TS
-export function main(): void { console.log('hello'); }`,
-  python: `# Python
-def main():
-    print("hello")`,
-  cpp: `// C++
-#include <bits/stdc++.h>
-using namespace std;
-int main(){ cout << "hello\\n"; }`,
-  java: `// Java
-class Main { public static void main(String[] args){ System.out.println("hello"); } }`,
-} as const;
+// const templates = {
+//   javascript: `// JS
+// function main(){ console.log('hello'); }`,
+//   typescript: `// TS
+// export function main(): void { console.log('hello'); }`,
+//   python: `# Python
+// def main():
+//     print("hello")`,
+//   cpp: `// C++
+// #include <bits/stdc++.h>
+// using namespace std;
+// int main(){ cout << "hello\\n"; }`,
+//   java: `// Java
+// class Main { public static void main(String[] args){ System.out.println("hello"); } }`,
+// } as const;
 
-function getTemplateFor(lang: keyof typeof templates) {
-  return templates[lang] ?? templates.javascript;
-}
+// function getTemplateFor(lang: keyof typeof templates) {
+//   return templates[lang] ?? templates.javascript;
+// }
