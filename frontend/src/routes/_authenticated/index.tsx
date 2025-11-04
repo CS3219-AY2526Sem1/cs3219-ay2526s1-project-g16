@@ -5,6 +5,7 @@ import { authFetch } from "@/lib/utils";
 import {
   questionDifficulties,
   type ListLanguagesResponse,
+  type ListQuestionsResponse,
   type ListTopicsResponse,
   type MatchResponse,
 } from "@/types";
@@ -44,6 +45,17 @@ function Home() {
       const res = await authFetch(`${QN_SERVICE_URL}/languages`);
       if (!res.ok) {
         throw new Error("Languages response was not ok");
+      }
+      return res.json();
+    },
+  });
+
+  const questionsQuery = useQuery<ListQuestionsResponse>({
+    queryKey: ["questions"],
+    queryFn: async () => {
+      const res = await authFetch(`${QN_SERVICE_URL}/questions`);
+      if (!res.ok) {
+        throw new Error("Questions response was not ok");
       }
       return res.json();
     },
@@ -116,6 +128,35 @@ function Home() {
       id: "data-load-error",
     });
   }
+
+  const resolveTopicsForQuestion = (q: any) => {
+    const allTopics = topicsQuery.data?.topics ?? [];
+
+    if (!q?.topics) return "-";
+
+    if (Array.isArray(q.topics) && typeof q.topics[0] === "string") {
+      return q.topics.join(", ");
+    }
+
+    if (Array.isArray(q.topics)) {
+      const names = q.topics
+        .map((t: any) => {
+          if (t?.name) return t.name;
+          if (t?.topic?.name) return t.topic.name;
+          if (t?.topicId) {
+            const match = allTopics.find(
+              (at) => at.id === t.topicId || at.name === t.topicId,
+            );
+            return match?.name ?? null;
+          }
+          return null;
+        })
+        .filter(Boolean);
+      return names.length ? names.join(", ") : "-";
+    }
+
+    return "-";
+  };
 
   return (
     <main className="mt-24 flex w-full flex-col items-center justify-center gap-8">
@@ -208,6 +249,54 @@ function Home() {
               Match Me!
             </Button>
           )}
+          <div className="mt-10 mb-24 w-full max-w-5xl">
+            <h2 className="mb-4 text-left text-2xl font-semibold">
+              Questions 
+            </h2>
+            {questionsQuery.isPending ? (
+              <div className="flex items-center gap-2 text-neutral-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading questions...
+              </div>
+            ) : questionsQuery.isError ? (
+              <div className="text-sm text-red-500">
+                Failed to load questions.
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border bg-white">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-neutral-50">
+                    <tr>
+                      <th className="px-4 py-2 font-medium text-neutral-700">
+                        Name
+                      </th>
+                      <th className="px-4 py-2 font-medium text-neutral-700">
+                        Difficulty
+                      </th>
+                      <th className="px-4 py-2 font-medium text-neutral-700">
+                        Topics
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {questionsQuery.data?.items?.map((q) => (
+                      <tr key={q.id ?? q.title} className="border-t">
+                        <td className="px-4 py-2">{q.title}</td>
+                        <td className="px-4 py-2">
+                          {"difficulty" in q && q.difficulty
+                            ? q.difficulty
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-2">
+                          {resolveTopicsForQuestion(q)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </>
       )}
     </main>
