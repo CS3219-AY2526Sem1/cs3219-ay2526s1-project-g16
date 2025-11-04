@@ -39,6 +39,7 @@ app.use(
 app.use(cookieParser());
 
 // Add rate limiter
+app.set('trust proxy', true);
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minutes
   max: 5000, // limit each IP to 5000 requests per windowMs
