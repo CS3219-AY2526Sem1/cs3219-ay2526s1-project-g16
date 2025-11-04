@@ -150,9 +150,9 @@ export function signalMatchFound(req: Request, res: Response) {
   const parsedRoomId = z.string().min(1).optional().safeParse(req.body?.roomId ?? req.query?.roomId);
   const roomId = parsedRoomId.success ? parsedRoomId.data : undefined;
 
-  console.log("[DEBUG] Sending roomId: ", roomId)
+  console.log(`[DEBUG] Sending roomId: ${roomId}`);
   const payload = {
-    session: {
+    session: 
       userId,
       roomId: roomId ?? null,
       via: "manual-signal",
