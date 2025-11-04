@@ -52,7 +52,7 @@ export const createMatchProxy = () =>
     changeOrigin: true,
     logger: console,
     pathRewrite: {
-      '^/': '/match/', 
+      '^/match': '',
     },
     on: {
       proxyReq: (proxyReq, req, res) => {
@@ -68,7 +68,7 @@ export const createQuestionProxy = () =>
     changeOrigin: true,
     logger: console,
     pathRewrite: {
-      '^/questionBank': '', // Remove /questionBank prefix
+      '^/question': '', // Remove /questionBank prefix
     },
     on: {
       proxyReq: (proxyReq, req, res) => {
