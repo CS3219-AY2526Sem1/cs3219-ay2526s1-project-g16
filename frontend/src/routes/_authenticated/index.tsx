@@ -8,6 +8,7 @@ import {
   type ListQuestionsResponse,
   type ListTopicsResponse,
   type MatchResponse,
+  type MatchResult,
 } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -107,12 +108,15 @@ function Home() {
     let eventSource: EventSource;
     if (subscribeUrl) {
       eventSource = new EventSource(subscribeUrl);
-      eventSource.addEventListener("status", (event) => {
-        const data: MatchResponse = JSON.parse(event.data);
-        if (data.status === "not_found") {
-          toast.error("Matching has timed out! Please try again.");
-          setSubscribeUrl(null);
-        }
+      eventSource.addEventListener("TIMEOUT", () => {
+        toast.error("Matching has timed out! Please try again.");
+        setSubscribeUrl(null);
+      });
+      eventSource.addEventListener("MATCH_FOUND", (event) => {
+        const { roomId }: Extract<MatchResult, { status: "MATCH_FOUND" }> =
+          JSON.parse(event.data);
+        setSubscribeUrl(null);
+        console.log("Matched! Room ID:", roomId);
       });
     }
     return () => {
