@@ -1,6 +1,10 @@
 import { MultiMatchMeSelect } from "@/components/matchMeSelect";
 import { Button } from "@/components/ui/button";
-import { MATCH_SERVICE_URL, QN_SERVICE_URL } from "@/constants";
+import {
+  MATCH_SERVICE_URL,
+  QN_SERVICE_URL,
+  USER_SERVICE_URL,
+} from "@/constants";
 import { authFetch } from "@/lib/utils";
 import {
   questionDifficulties,
@@ -106,7 +110,19 @@ function Home() {
   useEffect(() => {
     let eventSource: EventSource;
     if (subscribeUrl) {
-      eventSource = new EventSource(subscribeUrl);
+      eventSource = new EventSource(subscribeUrl, { withCredentials: true });
+      eventSource.onerror = async () => {
+        const refresh = await fetch(`${USER_SERVICE_URL}/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (refresh.ok) {
+          eventSource.close();
+          eventSource = new EventSource(subscribeUrl, {
+            withCredentials: true,
+          });
+        }
+      };
       eventSource.addEventListener("TIMEOUT", () => {
         toast.error("Matching has timed out! Please try again.");
         setSubscribeUrl(null);
