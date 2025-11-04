@@ -1,11 +1,12 @@
 export type User = {
   id: string;
-  username?: string;
+  username: string;
   email?: string;
   isAdmin?: boolean;
 };
 
 export const questionDifficulties = ["Easy", "Medium", "Hard"] as const;
+export type QuestionDifficulty = (typeof questionDifficulties)[number];
 
 export type ListQuestionsResponse = {
   items: Question[];
@@ -28,7 +29,7 @@ export type Question = {
   id: number;
   title: string;
   statement: string;
-  difficulty: (typeof questionDifficulties)[number];
+  difficulty: QuestionDifficulty;
   constraints?: string[];
   solutionOutline: string;
   // metadata: JsonValue | null;
@@ -67,4 +68,13 @@ type MatchResult =
 
 export type MatchResponse = MatchResult & {
   subscribeUrl: string;
+};
+
+export type ListAttemptsResponse = Attempt[];
+export type Attempt = {
+  id: string;
+  userId: string;
+  collabId: string;
+  question: number;
+  code: string;
 };
