@@ -85,7 +85,7 @@ export async function getActiveSessionByUsername(req: Request, res: Response) {
 // Frontend should retrieve question based on session.questionId after joinSession
 export async function createSession(req: Request, res: Response) {
   try {
-    const { topic, difficulty, questionId, roomId, expiresAt, user1ID, user2ID } = req.body; 
+    const { topic, difficulty, questionId, roomId, expiresAt, user1ID, user2ID, id } = req.body; 
   
     const session = await _createSession(
       roomId,
@@ -94,7 +94,7 @@ export async function createSession(req: Request, res: Response) {
       questionId,
       expiresAt ? new Date(expiresAt) : undefined
     );
-    console.log(`[DEBUG] Sending roomId: ${roomId}`);
+    console.log(`[DEBUG] Sending roomId: ${id}`);
 
     // upsert both users - _joinSession
     if (user1ID) {
