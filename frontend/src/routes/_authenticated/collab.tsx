@@ -1,16 +1,16 @@
 // src/routes/_authenticated/collab.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { authFetch } from "@/lib/utils";
-import { QN_SERVICE_URL, APIGATEWAY_URL } from "@/constants";
+import { APIGATEWAY_URL, QN_SERVICE_URL } from "@/constants";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
+import { authFetch } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-const BASE = (APIGATEWAY_URL || "").replace(/\/+$/, "");          // e.g. "http://whateverapi:port"
-const HTTP_BASE = `${BASE}/collab`;                                // HTTP control plane
-const WS_BASE   = `${BASE.replace(/^http\b/, "ws")}/collab/ws`;    // WS data plane
+const BASE = (APIGATEWAY_URL || "").replace(/\/+$/, ""); // e.g. "http://whateverapi:port"
+const HTTP_BASE = `${BASE}/collab`; // HTTP control plane
+const WS_BASE = `${BASE.replace(/^http\b/, "ws")}/collab/ws`; // WS data plane
 
 type CollabSession = {
   id: string;
@@ -32,7 +32,11 @@ type Question = {
   solutionOutline?: string;
   exampleIO?: QuestionExample[];
   metadata?: Record<string, unknown>;
-  topics?: { questionId: number; topicId: number; topic: { id: number; name: string } }[];
+  topics?: {
+    questionId: number;
+    topicId: number;
+    topic: { id: number; name: string };
+  }[];
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
@@ -46,15 +50,8 @@ function normParam(v: unknown): string | undefined {
 
 export const Route = createFileRoute("/_authenticated/collab")({
   component: CollaborationSpace,
-  validateSearch: (s: Record<string, unknown>) => {
-    const qidRaw = (s as any).qid ?? (s as any).qId;
-    return {
-      roomId: normParam(s.roomId),
-      lang: normParam(s.lang),
-      qid: normParam(qidRaw),
-      qtitle: normParam((s as any).qtitle),   
-      q: normParam((s as any).q),             
-    };
+  validateSearch: (search) => {
+    return { roomId: normParam(search.roomId) };
   },
 });
 
@@ -62,28 +59,29 @@ function CollaborationSpace() {
   const router = useRouter();
   const search = Route.useSearch();
 
-  const qidToUse = search.qid ?? "";
   const urlRoomId = search.roomId ?? "";
-  const lang = (search.lang ?? "javascript") as string;
 
-  const containerRef = useRef<HTMLDivElement | null>(null);  // editor DOM
-  const editorRef = useRef<any>(null);                       // Monaco editor instance
-  const modelRef = useRef<any>(null);                        // Monaco model
-  const providerRef = useRef<any>(null);                     // Hocuspocus (Yjs) provider
+  const containerRef = useRef<HTMLDivElement | null>(null); // editor DOM
+  const editorRef = useRef<any>(null); // Monaco editor instance
+  const modelRef = useRef<any>(null); // Monaco model
+  const providerRef = useRef<any>(null); // Hocuspocus (Yjs) provider
 
   const [status, setStatus] = useState("status: initializing…");
   const [readOnly, setReadOnly] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
-  const [derivedQid, setDerivedQid] = useState<string | undefined>(undefined); 
   const [authRequired, setAuthRequired] = useState(false);
+
+  const lang = "javascript"; // TODO: fetch from roomid
 
   // Safety net if users refreshes or navigates to /collab without roomId in URL
   const sessionQ = useQuery({
     queryKey: ["collab-session-active"],
     queryFn: async (): Promise<CollabSession | null> => {
       try {
-        const res = await authFetch(`${HTTP_BASE}/sessions/active`, { method: "GET" }); 
+        const res = await authFetch(`${HTTP_BASE}/sessions/active`, {
+          method: "GET",
+        });
         if (res.status === 401) {
           setAuthRequired(true);
           return null;
@@ -103,18 +101,22 @@ function CollaborationSpace() {
   // Choose roomId from SSE or from sessionQ (check for active session)
   const roomId = useMemo(
     () => urlRoomId || sessionQ.data?.id || "",
-    [urlRoomId, sessionQ.data?.id]
+    [urlRoomId, sessionQ.data?.id],
   );
 
-  const QN_BASE = (QN_SERVICE_URL && QN_SERVICE_URL.trim()) || "http://localhost:3001";
+  const QN_BASE =
+    (QN_SERVICE_URL && QN_SERVICE_URL.trim()) || "http://localhost:3001";
   const effectiveBase = QN_BASE.replace(/\/+$/, "");
 
-    // Retrieve question
+  // Retrieve question
   const sessionByIdQ = useQuery({
     queryKey: ["collab-session", roomId],
-    enabled: !!roomId,            // only when we know the room
+    enabled: !!roomId, // only when we know the room
     queryFn: async (): Promise<CollabSession | null> => {
-      const res = await authFetch(`${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`, { method: "GET" });
+      const res = await authFetch(
+        `${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`,
+        { method: "GET" },
+      );
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch session");
       const { data } = await res.json();
@@ -123,13 +125,7 @@ function CollaborationSpace() {
     staleTime: 15_000,
   });
 
-  useEffect(() => {
-  if (!qidToUse && sessionByIdQ.data?.questionId) {
-    setDerivedQid(sessionByIdQ.data.questionId);
-  }
-  }, [qidToUse, sessionByIdQ.data?.questionId]);
-
-  const qid = qidToUse || derivedQid || "";
+  const qid = sessionByIdQ.data?.questionId || "";
 
   const questionQ = useQuery({
     queryKey: ["collab-question", qid, effectiveBase],
@@ -141,8 +137,8 @@ function CollaborationSpace() {
         `${effectiveBase}/questions/${encodeURIComponent(qid)}`,
         {
           method: "GET",
-          headers: { Accept: "application/json"},
-        }
+          headers: { Accept: "application/json" },
+        },
       );
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -154,19 +150,23 @@ function CollaborationSpace() {
 
   useEffect(() => {
     if (!roomId) return;
-    if (authRequired) { setStatus("Not logged in"); return; }
+    if (authRequired) {
+      setStatus("Not logged in");
+      return;
+    }
 
     let disposed = false;
 
     (async () => {
       setupMonacoEnvironment();
 
-      const [{ HocuspocusProvider }, Y, { MonacoBinding }, monaco] = await Promise.all([
-        import("@hocuspocus/provider"),
-        import("yjs"),
-        import("y-monaco"),
-        import("monaco-editor"),
-      ]);
+      const [{ HocuspocusProvider }, Y, { MonacoBinding }, monaco] =
+        await Promise.all([
+          import("@hocuspocus/provider"),
+          import("yjs"),
+          import("y-monaco"),
+          import("monaco-editor"),
+        ]);
       if (disposed) return;
 
       // 1) connect Yjs provider (through WS auth/proxy)
@@ -179,15 +179,22 @@ function CollaborationSpace() {
       const ytext = ydoc.getText("code");
       ydoc.getMap("meta");
 
-      provider.on("status", (e: any) => setStatus(`status: ${e.status} to room ${roomId}`));
-      provider.on("close", () => setStatus(`status: closed (upgrade failed or server closed)`));
+      provider.on("status", (e: any) =>
+        setStatus(`status: ${e.status} to room ${roomId}`),
+      );
+      provider.on("close", () =>
+        setStatus(`status: closed (upgrade failed or server closed)`),
+      );
 
       // 3) initial template if doc is empty - i will leave empty for test
       // const initial = getTemplateFor((lang as keyof typeof templates) || "javascript");
       // if (ytext.length === 0) ytext.insert(0, initial);
 
       // 4) create Monaco model + editor
-      const model = monaco.editor.createModel(ytext.toString(), lang || "javascript");
+      const model = monaco.editor.createModel(
+        ytext.toString(),
+        lang || "javascript",
+      );
       modelRef.current = model;
 
       const editor = monaco.editor.create(containerRef.current!, {
@@ -208,29 +215,41 @@ function CollaborationSpace() {
       // 6) poll session liveness; if not ACTIVE → make editor readOnly
       const poller = setInterval(async () => {
         try {
-          const resp = await fetch(`${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`, {
-            method: "GET",
-          });
+          const resp = await fetch(
+            `${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`,
+            { method: "GET" },
+          );
           if (!resp.ok) return; // ignore transient errors
-          const { data } = (await resp.json()) as { data: CollabSession | null };
+          const { data } = (await resp.json()) as {
+            data: CollabSession | null;
+          };
           if (!data || data.status !== "ACTIVE") {
             setStatus(`session ended (${data?.status ?? "unknown"})`);
             setEndedBanner("This session has ended. Editing is disabled.");
-            try { provider.destroy(); } catch {}
+            try {
+              provider.destroy();
+            } catch {}
             setReadOnly(true);
-            try { editor.updateOptions({ readOnly: true }); } catch {}
+            try {
+              editor.updateOptions({ readOnly: true });
+            } catch {}
             clearInterval(poller);
           }
-        } catch {
-        }
+        } catch {}
       }, 2000);
 
       // cleanup on unmount/navigation/refresh
       const cleanup = () => {
         clearInterval(poller);
-        try { provider.destroy(); } catch {}
-        try { editor.dispose(); } catch {}
-        try { model.dispose(); } catch {}
+        try {
+          provider.destroy();
+        } catch {}
+        try {
+          editor.dispose();
+        } catch {}
+        try {
+          model.dispose();
+        } catch {}
       };
 
       window.addEventListener("beforeunload", cleanup);
@@ -240,16 +259,20 @@ function CollaborationSpace() {
       };
     })();
 
-    return () => { disposed = true; };
-  }, [roomId, lang, readOnly, authRequired]);
+    return () => {
+      disposed = true;
+    };
+  }, [roomId, readOnly, authRequired]);
 
   const title =
-    search.qtitle ??
     questionQ.data?.title ??
-    (questionQ.isLoading ? "Loading question…" : qid ? "Question unavailable" : "Unavailable Room.");
+    (questionQ.isLoading
+      ? "Loading question…"
+      : qid
+        ? "Question unavailable"
+        : "Unavailable Room.");
 
   const statement =
-    (search.q ?? undefined) ??
     questionQ.data?.statement ??
     (questionQ.isError
       ? "Failed to load question."
@@ -267,29 +290,32 @@ function CollaborationSpace() {
         ?.map((t) => t.topic?.name)
         .filter((n): n is string => !!n) ?? [];
     return Array.from(new Set(names));
-    }, [questionQ.data?.topics]);
-
+  }, [questionQ.data?.topics]);
 
   const showNoSession = sessionQ.isSuccess && !sessionQ.data && !roomId;
 
   return (
-    <main className="mt-4 w-full px-3 md:px-4 pb-8">
+    <main className="mt-4 w-full px-3 pb-8 md:px-4">
       {showNoSession && (
         <>
           <div className="rounded-lg border border-yellow-400 bg-yellow-50 p-4 text-yellow-800">
-            No active session found. Return to the main page to start a new session.
+            No active session found. Return to the main page to start a new
+            session.
           </div>
           <div className="mt-4">
-            <Button variant="outline" onClick={() => router.navigate({ to: "/" })}>
+            <Button
+              variant="outline"
+              onClick={() => router.navigate({ to: "/" })}
+            >
               Back to Home
             </Button>
           </div>
         </>
       )}
 
-      <div className="flex flex-col gap-3 lg:flex-row mt-3">
+      <div className="mt-3 flex flex-col gap-3 lg:flex-row">
         {/* Question Card */}
-        <Card className="lg:w-[38%] w-full h-[70vh] overflow-hidden">
+        <Card className="h-[70vh] w-full overflow-hidden lg:w-[38%]">
           <CardHeader className="pb-2">
             {endedBanner && (
               <div className="mb-2 rounded-md border border-neutral-600 bg-neutral-900/40 p-2 text-xs text-pink-200">
@@ -304,7 +330,7 @@ function CollaborationSpace() {
                 {topicNames.map((name) => (
                   <span
                     key={name}
-                    className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground"
+                    className="text-muted-foreground rounded-full border px-2 py-0.5 text-xs"
                   >
                     {name}
                   </span>
@@ -313,20 +339,21 @@ function CollaborationSpace() {
             )}
 
             {questionQ.data?.difficulty && (
-              <div className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+              <div className="text-muted-foreground mt-1 text-xs uppercase tracking-wide">
                 {questionQ.data.difficulty}
               </div>
             )}
 
-            {questionQ.isLoading && qidToUse && (
-              <div className="mt-2 text-xs text-muted-foreground">Loading…</div>
+            {questionQ.isLoading && (
+              <div className="text-muted-foreground mt-2 text-xs">Loading…</div>
             )}
           </CardHeader>
 
           <CardContent className="h-full overflow-y-auto whitespace-pre-wrap">
             {questionQ.isError && (
               <div className="mb-3 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-800">
-                {(questionQ.error as Error)?.message || "Failed to load question."}
+                {(questionQ.error as Error)?.message ||
+                  "Failed to load question."}
               </div>
             )}
 
@@ -334,7 +361,7 @@ function CollaborationSpace() {
 
             {questionQ.data?.constraints?.length ? (
               <div className="mt-4">
-                <div className="font-semibold mb-1">Constraints</div>
+                <div className="mb-1 font-semibold">Constraints</div>
                 <ul className="list-disc pl-5 text-sm">
                   {questionQ.data.constraints.map((c, i) => (
                     <li key={i}>{c}</li>
@@ -354,7 +381,7 @@ function CollaborationSpace() {
                 </Button>
 
                 {showSolution && (
-                  <div className="mt-3 text-sm whitespace-pre-wrap border-t pt-2">
+                  <div className="mt-3 whitespace-pre-wrap border-t pt-2 text-sm">
                     {questionQ.data.solutionOutline}
                   </div>
                 )}
@@ -367,7 +394,7 @@ function CollaborationSpace() {
         <div className="flex-1">
           <div
             ref={containerRef}
-            className="h-[70vh] border border-neutral-800 rounded-md"
+            className="h-[70vh] rounded-md border border-neutral-800"
             id="editor"
           />
         </div>
@@ -376,7 +403,7 @@ function CollaborationSpace() {
       <div className="mt-2 flex items-center justify-between text-xs text-neutral-600">
         <div id="status">{status}</div>
         {authRequired && (
-          <div className="rounded-lg border border-red-400 bg-red-50 p-3 text-red-700 mb-3">
+          <div className="mb-3 rounded-lg border border-red-400 bg-red-50 p-3 text-red-700">
             You’re not logged in. Please sign in, then refresh this page.
           </div>
         )}
@@ -386,18 +413,20 @@ function CollaborationSpace() {
         <div className="mt-4">
           <Card>
             <CardHeader className="pb-2">
-              <div className="text-2xl font-semibold">Example Input / Output</div>
+              <div className="text-2xl font-semibold">
+                Example Input / Output
+              </div>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <h3 className="mb-1 font-semibold">Input</h3>
-                <pre className="rounded-lg bg-muted p-3 text-sm overflow-x-auto whitespace-pre-wrap">
+                <pre className="bg-muted overflow-x-auto whitespace-pre-wrap rounded-lg p-3 text-sm">
                   {ein}
                 </pre>
               </div>
               <div>
                 <h3 className="mb-1 font-semibold">Output</h3>
-                <pre className="rounded-lg bg-muted p-3 text-sm overflow-x-auto whitespace-pre-wrap">
+                <pre className="bg-muted overflow-x-auto whitespace-pre-wrap rounded-lg p-3 text-sm">
                   {eout}
                 </pre>
               </div>
