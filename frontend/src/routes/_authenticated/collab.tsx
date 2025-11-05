@@ -136,10 +136,16 @@ function CollaborationSpace() {
     retry: 0,
     refetchOnWindowFocus: "always",
     queryFn: async (): Promise<Question> => {
-      const res = await fetch(`${effectiveBase}/questions/${encodeURIComponent(qid)}`, {
-        headers: { Accept: "application/json" },
-        mode: "cors",
-      });
+      const res = await authFetch(
+        `${effectiveBase}/questions/${encodeURIComponent(qid)}`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`Question fetch failed: ${res.status} ${text}`);
