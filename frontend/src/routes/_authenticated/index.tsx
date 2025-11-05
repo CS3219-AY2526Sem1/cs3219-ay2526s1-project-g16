@@ -1,16 +1,13 @@
 import { MultiMatchMeSelect } from "@/components/matchMeSelect";
 import { Button } from "@/components/ui/button";
-import {
-  MATCH_SERVICE_URL,
-  QN_SERVICE_URL,
-  USER_SERVICE_URL,
-} from "@/constants";
+import { MATCH_SERVICE_URL, QN_SERVICE_URL } from "@/constants";
 import { authFetch } from "@/lib/utils";
 import {
   questionDifficulties,
   type ListLanguagesResponse,
   type ListQuestionsResponse,
   type ListTopicsResponse,
+  type MatchResponse,
   type MatchResult,
 } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -23,15 +20,22 @@ export const Route = createFileRoute("/_authenticated/")({
   component: Home,
 });
 
+type MatchState =
+  | { status: "idle" }
+  | { status: "searching"; subscribeUrl: string }
+  | { status: "matched"; roomId: string };
+
 function Home() {
   const [questionTopics, setQuestionTopics] = useState<string[]>([""]);
   const [difficultyLevels, setDifficultyLevels] = useState<string[]>([""]);
   const [languages, setLanguages] = useState<string[]>([""]);
-  const [subscribeUrl, setSubscribeUrl] = useState<string | null>(null);
+  const [matchState, setMatchState] = useState<MatchState>({ status: "idle" });
   const [questionSearch, setQuestionSearch] = useState("");
 
   const { auth } = Route.useRouteContext();
   const { user } = auth;
+
+  const navigate = Route.useNavigate();
 
   const topicsQuery = useQuery<ListTopicsResponse>({
     queryKey: ["questionTopics"],
@@ -67,7 +71,7 @@ function Home() {
   });
 
   const findMatchMutation = useMutation({
-    mutationFn: async (): Promise<void> => {
+    mutationFn: async (): Promise<MatchResponse> => {
       const res = await authFetch(`${MATCH_SERVICE_URL}/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,8 +87,17 @@ function Home() {
       }
       return res.json();
     },
-    onSuccess: () => {
-      setSubscribeUrl(`${MATCH_SERVICE_URL}/subscribe/${user?.id}`);
+    onSuccess: (data) => {
+      if (data.status === "matched") {
+        // console.log("Matched! Room ID:", data.roomId);
+        // setSubscribeUrl(null);
+        setMatchState({ status: "matched", roomId: data.roomId });
+      } else {
+        setMatchState({
+          status: "searching",
+          subscribeUrl: `${MATCH_SERVICE_URL}/subscribe/${user?.id}`,
+        });
+      }
     },
   });
 
@@ -103,35 +116,24 @@ function Home() {
       return res.json();
     },
     onSuccess: () => {
-      setSubscribeUrl(null);
+      setMatchState({ status: "idle" });
     },
   });
 
   useEffect(() => {
     let eventSource: EventSource;
-    if (subscribeUrl) {
-      eventSource = new EventSource(subscribeUrl, { withCredentials: true });
-      eventSource.onerror = async () => {
-        const refresh = await fetch(`${USER_SERVICE_URL}/refresh`, {
-          method: "POST",
-          credentials: "include",
-        });
-        if (refresh.ok) {
-          eventSource.close();
-          eventSource = new EventSource(subscribeUrl, {
-            withCredentials: true,
-          });
-        }
-      };
+    if (matchState.status === "searching") {
+      eventSource = new EventSource(matchState.subscribeUrl, {
+        withCredentials: true,
+      });
       eventSource.addEventListener("TIMEOUT", () => {
         toast.error("Matching has timed out! Please try again.");
-        setSubscribeUrl(null);
+        setMatchState({ status: "idle" });
       });
       eventSource.addEventListener("MATCH_FOUND", (event) => {
         const { roomId }: Extract<MatchResult, { status: "MATCH_FOUND" }> =
           JSON.parse(event.data);
-        console.log("Matched! Room ID:", roomId);
-        setSubscribeUrl(null);
+        setMatchState({ status: "matched", roomId });
       });
     }
     return () => {
@@ -139,7 +141,7 @@ function Home() {
         eventSource.close();
       }
     };
-  }, [subscribeUrl]);
+  }, [matchState]);
 
   // at most toast once
   const queryIsError = topicsQuery.isError || langsQuery.isError;
@@ -148,6 +150,18 @@ function Home() {
       id: "data-load-error",
     });
   }
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (matchState.status === "matched") {
+      timer = setTimeout(() => {
+        navigate({ to: "/collab", search: { roomId: matchState.roomId } });
+      }, 3000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [matchState, navigate]);
 
   const resolveTopicsForQuestion = (q: any) => {
     const allTopics = topicsQuery.data?.topics ?? [];
@@ -205,12 +219,16 @@ function Home() {
 
   return (
     <main className="mt-24 flex w-full flex-col items-center justify-center gap-8">
-      {subscribeUrl ? (
+      {matchState.status === "idle" ? (
+        <h1 className="text-7xl font-semibold">Match Me</h1>
+      ) : matchState.status === "searching" ? (
         <h1 className="after:animate-ellipsis flex text-7xl font-semibold text-pink-800/70 after:block after:w-0">
           Searching
         </h1>
       ) : (
-        <h1 className="text-7xl font-semibold">Match Me</h1>
+        <h1 className="text-7xl font-semibold text-green-700/70">
+          Match Found!
+        </h1>
       )}
       {topicsQuery.isPending || langsQuery.isPending ? (
         <div className="mt-6 flex items-center gap-4 text-2xl text-neutral-700">
@@ -219,81 +237,90 @@ function Home() {
         </div>
       ) : (
         <>
-          <div className="mr-4 grid grid-cols-2 gap-x-2 gap-y-2 text-3xl">
-            <span className="text-right">I want to do</span>
-            <MultiMatchMeSelect
-              placeholder="Question Topics"
-              choices={
-                topicsQuery.data?.topics?.map(({ name }) => ({
-                  value: name,
-                  label: name,
-                })) ?? []
-              }
-              triggerClassName="text-blue-500"
-              itemClassName="text-blue-900/80 focus:text-blue-500 data-[state=checked]:text-blue-500 [&_svg]:!text-blue-800/50"
-              items={questionTopics}
-              setItems={setQuestionTopics}
-              disabled={queryIsError || !!subscribeUrl}
-            />
+          {matchState.status !== "matched" ? (
+            <>
+              <div className="mr-4 grid grid-cols-2 gap-x-2 gap-y-2 text-3xl">
+                <span className="text-right">I want to do</span>
+                <MultiMatchMeSelect
+                  placeholder="Question Topics"
+                  choices={
+                    topicsQuery.data?.topics?.map(({ name }) => ({
+                      value: name,
+                      label: name,
+                    })) ?? []
+                  }
+                  triggerClassName="text-blue-500"
+                  itemClassName="text-blue-900/80 focus:text-blue-500 data-[state=checked]:text-blue-500 [&_svg]:!text-blue-800/50"
+                  items={questionTopics}
+                  setItems={setQuestionTopics}
+                  disabled={queryIsError || matchState.status !== "idle"}
+                />
 
-            <span className="text-right">at difficulty level</span>
-            <MultiMatchMeSelect
-              placeholder="Difficulty Level"
-              choices={questionDifficulties.map((level) => ({
-                value: level,
-                label: level,
-              }))}
-              triggerClassName="text-orange-500"
-              itemClassName="text-orange-900/80 focus:text-orange-500 data-[state=checked]:text-orange-500 [&_svg]:!text-orange-800/50"
-              items={difficultyLevels}
-              setItems={setDifficultyLevels}
-              disabled={queryIsError || !!subscribeUrl}
-            />
+                <span className="text-right">at difficulty level</span>
+                <MultiMatchMeSelect
+                  placeholder="Difficulty Level"
+                  choices={questionDifficulties.map((level) => ({
+                    value: level,
+                    label: level,
+                  }))}
+                  triggerClassName="text-orange-500"
+                  itemClassName="text-orange-900/80 focus:text-orange-500 data-[state=checked]:text-orange-500 [&_svg]:!text-orange-800/50"
+                  items={difficultyLevels}
+                  setItems={setDifficultyLevels}
+                  disabled={queryIsError || matchState.status !== "idle"}
+                />
 
-            <span className="text-right">using</span>
-            <MultiMatchMeSelect
-              placeholder="Language"
-              choices={
-                langsQuery.data?.languages?.map(({ name }) => ({
-                  value: name,
-                  label: name,
-                })) ?? []
-              }
-              triggerClassName="text-red-500"
-              itemClassName="text-red-900/80 focus:text-red-500 data-[state=checked]:text-red-500 [&_svg]:!text-red-800/50"
-              items={languages}
-              setItems={setLanguages}
-              disabled={queryIsError || !!subscribeUrl}
-            />
-          </div>
+                <span className="text-right">using</span>
+                <MultiMatchMeSelect
+                  placeholder="Language"
+                  choices={
+                    langsQuery.data?.languages?.map(({ name }) => ({
+                      value: name,
+                      label: name,
+                    })) ?? []
+                  }
+                  triggerClassName="text-red-500"
+                  itemClassName="text-red-900/80 focus:text-red-500 data-[state=checked]:text-red-500 [&_svg]:!text-red-800/50"
+                  items={languages}
+                  setItems={setLanguages}
+                  disabled={queryIsError || matchState.status !== "idle"}
+                />
+              </div>
 
-          {subscribeUrl ? (
-            <Button
-              size="lg"
-              className="bg-red-500 hover:bg-red-600"
-              onClick={() => cancelMatchMutation.mutate()}
-            >
-              Cancel Matching
-            </Button>
-          ) : (
-            <Button
-              size="lg"
-              className="bg-teal-600 hover:bg-teal-700"
-              onClick={() => findMatchMutation.mutate()}
-              disabled={
-                questionTopics.filter((x) => !!x).length === 0 ||
-                difficultyLevels.filter((x) => !!x).length === 0 ||
-                languages.filter((x) => !!x).length === 0 ||
-                findMatchMutation.isPending ||
-                queryIsError
-              }
-            >
-              {findMatchMutation.isPending && (
-                <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+              {matchState.status === "idle" ? (
+                <Button
+                  size="lg"
+                  className="bg-teal-600 hover:bg-teal-700"
+                  onClick={() => findMatchMutation.mutate()}
+                  disabled={
+                    questionTopics.filter((x) => !!x).length === 0 ||
+                    difficultyLevels.filter((x) => !!x).length === 0 ||
+                    languages.filter((x) => !!x).length === 0 ||
+                    findMatchMutation.isPending ||
+                    queryIsError
+                  }
+                >
+                  {findMatchMutation.isPending && (
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                  )}
+                  Match Me!
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  className="bg-red-500 hover:bg-red-600"
+                  onClick={() => cancelMatchMutation.mutate()}
+                >
+                  Cancel Matching
+                </Button>
               )}
-              Match Me!
-            </Button>
+            </>
+          ) : (
+            <div className="my-6 text-3xl">
+              You'll be redirected to your coding room shortly!
+            </div>
           )}
+
           <div className="mb-24 mt-10 w-full max-w-5xl">
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="text-left text-2xl font-semibold">Questions</h2>

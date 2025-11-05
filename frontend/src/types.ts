@@ -50,6 +50,6 @@ export type MatchResult =
   | { status: "MATCH_FOUND"; roomId: string }
   | { status: "TIMEOUT" };
 
-export type MatchResponse = {
-  subscribeUrl: string;
-};
+export type MatchResponse =
+  | { status: "queued" }
+  | { status: "matched"; roomId: string };
