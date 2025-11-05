@@ -52,7 +52,6 @@ export const Route = createFileRoute("/_authenticated/collab")({
       roomId: normParam(s.roomId),
       lang: normParam(s.lang),
       qid: normParam(qidRaw),
-      token: normParam((s as any).token),     
       qtitle: normParam((s as any).qtitle),   
       q: normParam((s as any).q),             
     };
@@ -65,7 +64,6 @@ function CollaborationSpace() {
 
   const qidToUse = search.qid ?? "";
   const urlRoomId = search.roomId ?? "";
-  const token = search.token ?? "";
   const lang = (search.lang ?? "javascript") as string;
 
   const containerRef = useRef<HTMLDivElement | null>(null);  // editor DOM
@@ -78,15 +76,18 @@ function CollaborationSpace() {
   const [showSolution, setShowSolution] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
   const [derivedQid, setDerivedQid] = useState<string | undefined>(undefined); 
-
-  const missingToken = !token;
+  const [authRequired, setAuthRequired] = useState(false);
 
   // Safety net if users refreshes or navigates to /collab without roomId in URL
   const sessionQ = useQuery({
     queryKey: ["collab-session-active"],
     queryFn: async (): Promise<CollabSession | null> => {
       try {
-        const res = await authFetch(`${HTTP_BASE}/sessions/active`, { method: "GET" }); // will this work with the user cookie! (retrieve jwt correctly)
+        const res = await authFetch(`${HTTP_BASE}/sessions/active`, { method: "GET" }); 
+        if (res.status === 401) {
+          setAuthRequired(true);
+          return null;
+        }
         if (res.status === 404) return null;
         if (!res.ok) throw new Error("Failed to fetch active session");
         const { data } = await res.json();
@@ -140,10 +141,7 @@ function CollaborationSpace() {
         `${effectiveBase}/questions/${encodeURIComponent(qid)}`,
         {
           method: "GET",
-          headers: {
-            Accept: "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+          headers: { Accept: "application/json"},
         }
       );
       if (!res.ok) {
@@ -156,7 +154,7 @@ function CollaborationSpace() {
 
   useEffect(() => {
     if (!roomId) return;
-    if (missingToken) { setStatus("Missing ?token"); return; }
+    if (authRequired) { setStatus("Not logged in"); return; }
 
     let disposed = false;
 
@@ -172,7 +170,7 @@ function CollaborationSpace() {
       if (disposed) return;
 
       // 1) connect Yjs provider (through WS auth/proxy)
-      const wsUrl = `${WS_BASE}/${encodeURIComponent(roomId)}}`;
+      const wsUrl = `${WS_BASE}/${encodeURIComponent(roomId)}`;
       const provider = new HocuspocusProvider({ url: wsUrl, name: roomId });
       providerRef.current = provider;
 
@@ -211,7 +209,7 @@ function CollaborationSpace() {
       const poller = setInterval(async () => {
         try {
           const resp = await fetch(`${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`, {
-            headers: { Authorization: `Bearer ${token}` },
+            method: "GET",
           });
           if (!resp.ok) return; // ignore transient errors
           const { data } = (await resp.json()) as { data: CollabSession | null };
@@ -243,7 +241,7 @@ function CollaborationSpace() {
     })();
 
     return () => { disposed = true; };
-  }, [roomId, lang, readOnly, token, missingToken]);
+  }, [roomId, lang, readOnly, authRequired]);
 
   const title =
     search.qtitle ??
@@ -377,7 +375,11 @@ function CollaborationSpace() {
 
       <div className="mt-2 flex items-center justify-between text-xs text-neutral-600">
         <div id="status">{status}</div>
-        {missingToken && <div className="text-red-500">Token is required (?token=…)</div>}
+        {authRequired && (
+          <div className="rounded-lg border border-red-400 bg-red-50 p-3 text-red-700 mb-3">
+            You’re not logged in. Please sign in, then refresh this page.
+          </div>
+        )}
       </div>
 
       {(ein || eout) && (
