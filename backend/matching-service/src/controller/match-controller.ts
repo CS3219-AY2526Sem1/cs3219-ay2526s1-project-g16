@@ -90,6 +90,7 @@ type EnqueueResult =
       roomId?: string;
       topic?: string;
       difficulty?: string;
+      language?: string;
       questionId?: string | null;
       userId?: string | null;
       partnerId?: string | null;
@@ -142,6 +143,7 @@ export async function createUserMatch(
   const questionId = match.questionId ?? body.questionId ?? null;
   const user1ID = match.userId ?? null;
   const user2ID = match.partnerId ?? null;
+  const language = match.language;
 
   const url = `${COLLAB_BASE}/sessions`;
   
@@ -150,9 +152,12 @@ export async function createUserMatch(
     topic,
     difficulty,
     questionId,
+    language,
     user1ID,
     user2ID
   };
+  
+  console.log("[DEBUG] raw body:", payload);
 
   const session = await httpJSON<CollabSession>(url, {
     method: "POST",
