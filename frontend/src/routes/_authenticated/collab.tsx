@@ -5,12 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { authFetch } from "@/lib/utils";
-import { QN_SERVICE_URL } from "@/constants";
+import { QN_SERVICE_URL, APIGATEWAY_URL } from "@/constants";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
 
-// Are these correct?
-const WS_BASE = import.meta.env.VITE_COLLAB_WS_URL ?? "ws://localhost:3009/collab/ws";
-const HTTP_BASE = import.meta.env.VITE_COLLAB_HTTP_URL ?? "http://localhost:3009/collab";
+const BASE = (APIGATEWAY_URL || "").replace(/\/+$/, "");          // e.g. "http://34.142.162.255:8080"
+const HTTP_BASE = `${BASE}/collab`;                                // HTTP control plane
+const WS_BASE   = `${BASE.replace(/^http\b/, "ws")}/collab/ws`;    // WS data plane
 
 type CollabSession = {
   id: string;
