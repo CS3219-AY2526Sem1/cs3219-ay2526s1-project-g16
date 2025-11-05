@@ -8,7 +8,7 @@ import { authFetch } from "@/lib/utils";
 import { QN_SERVICE_URL, APIGATEWAY_URL } from "@/constants";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
 
-const BASE = (APIGATEWAY_URL || "").replace(/\/+$/, "");          // e.g. "http://34.142.162.255:8080"
+const BASE = (APIGATEWAY_URL || "").replace(/\/+$/, "");          // e.g. "http://whateverapi:port"
 const HTTP_BASE = `${BASE}/collab`;                                // HTTP control plane
 const WS_BASE   = `${BASE.replace(/^http\b/, "ws")}/collab/ws`;    // WS data plane
 
