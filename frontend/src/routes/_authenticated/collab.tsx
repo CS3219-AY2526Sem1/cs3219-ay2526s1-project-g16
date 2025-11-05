@@ -172,7 +172,7 @@ function CollaborationSpace() {
       if (disposed) return;
 
       // 1) connect Yjs provider (through WS auth/proxy)
-      const wsUrl = `${WS_BASE}/${encodeURIComponent(roomId)}?token=${encodeURIComponent(token)}`;
+      const wsUrl = `${WS_BASE}/${encodeURIComponent(roomId)}}`;
       const provider = new HocuspocusProvider({ url: wsUrl, name: roomId });
       providerRef.current = provider;
 
