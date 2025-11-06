@@ -99,6 +99,9 @@ function Home() {
         });
       }
     },
+    onError: (error) => {
+      toast.error(`An error occurred: ${error.message}`);
+    },
   });
 
   const cancelMatchMutation = useMutation({
