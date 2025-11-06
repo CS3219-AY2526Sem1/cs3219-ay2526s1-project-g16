@@ -156,6 +156,7 @@ function CollaborationSpace() {
     }
 
     let disposed = false;
+    let cleanup = () => {};
 
     (async () => {
       setupMonacoEnvironment();
@@ -179,24 +180,22 @@ function CollaborationSpace() {
       const ytext = ydoc.getText("code");
       ydoc.getMap("meta");
 
-      provider.on("status", (e: any) =>
-        setStatus(`status: ${e.status} to room ${roomId}`),
-      );
-      provider.on("close", () =>
-        setStatus(`status: closed (upgrade failed or server closed)`),
-      );
+      provider.on("status", (e: any) => setStatus(`status: ${e.status} to room ${roomId}`));
+      provider.on("close", () => setStatus(`status: closed (upgrade failed or server closed)`));
 
       // 3) initial template if doc is empty - i will leave empty for test
       // const initial = getTemplateFor((lang as keyof typeof templates) || "javascript");
       // if (ytext.length === 0) ytext.insert(0, initial);
 
-      // 4) create Monaco model + editor
+      // 4a) Monaco model 
       const model = monaco.editor.createModel(
-        ytext.toString(),
-        lang || "javascript",
+        "", // ytext.toString() -> N2H: code template
+        lang || "javascript"
       );
+      model.setEOL(monaco.editor.EndOfLineSequence.LF); // normalise EOL
       modelRef.current = model;
 
+      // 4b) Monaco editor
       const editor = monaco.editor.create(containerRef.current!, {
         model,
         language: lang || "javascript",
@@ -206,6 +205,7 @@ function CollaborationSpace() {
         tabSize: 2,
         insertSpaces: true,
         readOnly,
+        wordWrap: "off",
       });
       editorRef.current = editor;
 
@@ -220,49 +220,43 @@ function CollaborationSpace() {
             { method: "GET" },
           );
           if (!resp.ok) return; // ignore transient errors
-          const { data } = (await resp.json()) as {
-            data: CollabSession | null;
-          };
+
+          const { data } = (await resp.json()) as { data: CollabSession | null; };
           if (!data || data.status !== "ACTIVE") {
             setStatus(`session ended (${data?.status ?? "unknown"})`);
             setEndedBanner("This session has ended. Editing is disabled.");
-            try {
-              provider.destroy();
-            } catch {}
+            try { provider.destroy(); } catch {}
             setReadOnly(true);
-            try {
-              editor.updateOptions({ readOnly: true });
-            } catch {}
+            try { editor.updateOptions({ readOnly: true }); } catch {}
             clearInterval(poller);
           }
         } catch {}
       }, 2000);
 
       // cleanup on unmount/navigation/refresh
-      const cleanup = () => {
+      cleanup = () => {
         clearInterval(poller);
-        try {
-          provider.destroy();
-        } catch {}
-        try {
-          editor.dispose();
-        } catch {}
-        try {
-          model.dispose();
-        } catch {}
-      };
-
-      window.addEventListener("beforeunload", cleanup);
-      return () => {
-        window.removeEventListener("beforeunload", cleanup);
-        cleanup();
+        try { provider.destroy(); } catch {}
+        try { editor.dispose(); } catch {}
+        try { model.dispose(); } catch {}
+        providerRef.current = null;
+        editorRef.current = null;
+        modelRef.current = null;
       };
     })();
 
+    // cleanup outside the async iife and in useeffect
     return () => {
       disposed = true;
+      cleanup();
     };
-  }, [roomId, readOnly, authRequired]);
+  }, [roomId]);
+
+  useEffect(() => {
+    if (editorRef.current) {
+      try { editorRef.current.updateOptions({ readOnly }); } catch {}
+    }
+  }, [readOnly]);
 
   const title =
     questionQ.data?.title ??
