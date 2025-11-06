@@ -5,10 +5,6 @@ WORKDIR /app
 # -----------------------------
 # 0. System dependencies
 # -----------------------------
-# openjdk17-jdk → Java compiler and runtime
-# python3 → Python interpreter
-# curl → for healthchecks
-# bash → optional for debugging and shell scripts
 RUN apk add --no-cache \
     python3 \
     openjdk17-jdk \
@@ -32,10 +28,8 @@ COPY . .
 ENV NODE_ENV=production
 ENV PORT=3005
 
-# Expose port for container networking
 EXPOSE 3005
 
-# Healthcheck endpoint
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
   CMD curl -fsS http://127.0.0.1:${PORT}/health || exit 1
 
