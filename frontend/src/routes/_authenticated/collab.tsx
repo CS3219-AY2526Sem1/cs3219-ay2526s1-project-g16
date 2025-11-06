@@ -209,7 +209,7 @@ function CollaborationSpace() {
       // 4b) Monaco editor
       const editor = monaco.editor.create(containerRef.current!, {
         model,
-        language: lang || "javascript",
+        language: monacoLang,
         theme: "vs-dark",
         automaticLayout: true,
         minimap: { enabled: false },
@@ -328,7 +328,14 @@ function CollaborationSpace() {
               </div>
             )}
 
-            <div className="text-2xl font-semibold">{title}</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="text-2xl font-semibold">{title}</div>
+
+              {/* Language badge */}
+              <span className="rounded-full border px-2 py-0.5 text-xs uppercase tracking-wide">
+                {sessionByIdQ.isLoading ? "…" : `Language: ${sessionLang}`}
+              </span>
+            </div>
 
             {topicNames.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-2">
