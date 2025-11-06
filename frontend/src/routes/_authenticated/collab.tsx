@@ -77,9 +77,7 @@ function CollaborationSpace() {
   const [showSolution, setShowSolution] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
-
-  const lang = "javascript"; // TODO: fetch from roomid
-
+  
   // Safety net if users refreshes or navigates to /collab without roomId in URL
   const sessionQ = useQuery({
     queryKey: ["collab-session-active"],
