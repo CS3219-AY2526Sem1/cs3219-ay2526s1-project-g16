@@ -1,13 +1,19 @@
 // src/routes/_authenticated/collab.tsx
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { COLLAB_SERVICE_URL, QN_SERVICE_URL } from "@/constants";
+import {
+  ATTEMPT_SERVICE_URL,
+  COLLAB_SERVICE_URL,
+  QN_SERVICE_URL,
+} from "@/constants";
 import { ensureMonacoLanguage } from "@/lib/loadMonacoLang";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
 import { authFetch } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import type { editor } from "monaco-editor";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 const HTTP_BASE = COLLAB_SERVICE_URL; // HTTP control plane
 const WS_BASE = `${COLLAB_SERVICE_URL.replace(/^http\b/, "ws")}/ws`; // WS data plane
@@ -66,12 +72,14 @@ export const Route = createFileRoute("/_authenticated/collab")({
 function CollaborationSpace() {
   const router = useRouter();
   const search = Route.useSearch();
+  const { auth } = Route.useRouteContext();
+  const { user } = auth;
 
   const urlRoomId = search.roomId ?? "";
 
   const containerRef = useRef<HTMLDivElement | null>(null); // editor DOM
-  const editorRef = useRef<any>(null); // Monaco editor instance
-  const modelRef = useRef<any>(null); // Monaco model
+  const editorRef = useRef<editor.IStandaloneCodeEditor>(null); // Monaco editor instance
+  const modelRef = useRef<editor.ITextModel>(null); // Monaco model
   const providerRef = useRef<any>(null); // Hocuspocus (Yjs) provider
 
   const [status, setStatus] = useState("status: initializing…");
@@ -170,10 +178,7 @@ function CollaborationSpace() {
     try {
       const res = await authFetch(
         `${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}/end`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        },
+        { method: "POST", headers: { "Content-Type": "application/json" } },
       );
 
       if (!res.ok) {
@@ -196,6 +201,39 @@ function CollaborationSpace() {
       setIsEnding(false);
     }
   }
+
+  const saveProgressMutation = useMutation({
+    mutationFn: async () => {
+      const code = modelRef.current?.getValue();
+      const userId = user?.id;
+      const collabId = sessionQ.data?.participants?.find(
+        (p) => p.userId !== userId,
+      )?.userId;
+      const questionId = Number(qid);
+
+      if (!code || !roomId || !userId || !collabId || !questionId) {
+        toast.error("Missing data to save progress.");
+        throw new Error("Missing data to save progress.");
+      }
+
+      const res = await authFetch(`${ATTEMPT_SERVICE_URL}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, collabId, questionId, code }),
+      });
+
+      if (!res.ok) {
+        toast.error("Failed to save progress.");
+        throw new Error("Failed to save progress.");
+      }
+    },
+    onSuccess: () => {
+      toast.success("Progress saved successfully.");
+    },
+    onError: (error) => {
+      toast.error(`Error saving progress: ${error.message}`);
+    },
+  });
 
   useEffect(() => {
     if (!roomId) return;
@@ -397,6 +435,15 @@ function CollaborationSpace() {
               </span>
 
               <div className="ml-auto" />
+
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!roomId || isEnding}
+                onClick={() => saveProgressMutation.mutate()}
+              >
+                Save Progress
+              </Button>
 
               {/* End button */}
               <Button
