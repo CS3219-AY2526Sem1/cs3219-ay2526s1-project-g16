@@ -1,17 +1,16 @@
 // src/routes/_authenticated/collab.tsx
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { APIGATEWAY_URL, QN_SERVICE_URL } from "@/constants";
+import { COLLAB_SERVICE_URL, QN_SERVICE_URL } from "@/constants";
+import { ensureMonacoLanguage } from "@/lib/loadMonacoLang";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
 import { authFetch } from "@/lib/utils";
-import { ensureMonacoLanguage } from "@/lib/loadMonacoLang";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const BASE = (APIGATEWAY_URL || "").replace(/\/+$/, ""); // e.g. "http://whateverapi:port"
-const HTTP_BASE = `${BASE}/collab`; // HTTP control plane
-const WS_BASE = `${BASE.replace(/^http\b/, "ws")}/collab/ws`; // WS data plane
+const HTTP_BASE = COLLAB_SERVICE_URL; // HTTP control plane
+const WS_BASE = `${COLLAB_SERVICE_URL.replace(/^http\b/, "ws")}/ws`; // WS data plane
 
 // === TYPES ===
 type CollabSession = {
@@ -63,7 +62,6 @@ export const Route = createFileRoute("/_authenticated/collab")({
   },
 });
 
-
 // === MAIN COLLAB SPACE LOGIC ===
 function CollaborationSpace() {
   const router = useRouter();
@@ -82,8 +80,8 @@ function CollaborationSpace() {
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
-  
-  // === RETRIEVAL FROM COLLAB/QNS === 
+
+  // === RETRIEVAL FROM COLLAB/QNS ===
   // Safety net if users refreshes or navigates to /collab without roomId in URL
   const sessionQ = useQuery({
     queryKey: ["collab-session-active"],
@@ -158,7 +156,8 @@ function CollaborationSpace() {
     },
   });
 
-  const sessionLang = (sessionByIdQ.data?.language as "java" | "python") ?? "python";
+  const sessionLang =
+    (sessionByIdQ.data?.language as "java" | "python") ?? "python";
   const monacoLang = toMonacoLanguageId(sessionLang);
 
   // === HELPER TO END SESSION ===
@@ -169,10 +168,13 @@ function CollaborationSpace() {
 
     setIsEnding(true);
     try {
-      const res = await authFetch(`${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}/end`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await authFetch(
+        `${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}/end`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
 
       if (!res.ok) {
         const msg = await res.text().catch(() => "");
@@ -182,9 +184,12 @@ function CollaborationSpace() {
       // client-side shutdown (the poller will also catch it)
       setEndedBanner("This session has ended. Editing is disabled.");
       setReadOnly(true);
-      try { providerRef.current?.destroy?.(); } catch {}
-      try { editorRef.current?.updateOptions?.({ readOnly: true }); } catch {}
-
+      try {
+        providerRef.current?.destroy?.();
+      } catch {}
+      try {
+        editorRef.current?.updateOptions?.({ readOnly: true });
+      } catch {}
     } catch (e) {
       alert((e as Error).message || "Failed to end session.");
     } finally {
@@ -194,7 +199,10 @@ function CollaborationSpace() {
 
   useEffect(() => {
     if (!roomId) return;
-    if (authRequired) { setStatus("Not logged in"); return; }
+    if (authRequired) {
+      setStatus("Not logged in");
+      return;
+    }
     if (sessionByIdQ.isLoading) return; // wait to know the language
 
     let disposed = false;
@@ -225,17 +233,21 @@ function CollaborationSpace() {
       const ytext = ydoc.getText("code");
       ydoc.getMap("meta");
 
-      provider.on("status", (e: any) => setStatus(`status: ${e.status} to room ${roomId}`));
-      provider.on("close", () => setStatus(`status: closed (upgrade failed or server closed)`));
+      provider.on("status", (e: any) =>
+        setStatus(`status: ${e.status} to room ${roomId}`),
+      );
+      provider.on("close", () =>
+        setStatus(`status: closed (upgrade failed or server closed)`),
+      );
 
       // 3) initial template if doc is empty - i will leave empty for test
       // const initial = getTemplateFor((lang as keyof typeof templates) || "javascript");
       // if (ytext.length === 0) ytext.insert(0, initial);
 
-      // 4a) Monaco model 
+      // 4a) Monaco model
       const model = monaco.editor.createModel(
         "", // ytext.toString() -> N2H: code template
-        monacoLang
+        monacoLang,
       );
       model.setEOL(monaco.editor.EndOfLineSequence.LF); // normalise EOL
       modelRef.current = model;
@@ -266,13 +278,19 @@ function CollaborationSpace() {
           );
           if (!resp.ok) return; // ignore transient errors
 
-          const { data } = (await resp.json()) as { data: CollabSession | null; };
+          const { data } = (await resp.json()) as {
+            data: CollabSession | null;
+          };
           if (!data || data.status !== "ACTIVE") {
             setStatus(`session ended (${data?.status ?? "unknown"})`);
             setEndedBanner("This session has ended. Editing is disabled.");
-            try { provider.destroy(); } catch {}
+            try {
+              provider.destroy();
+            } catch {}
             setReadOnly(true);
-            try { editor.updateOptions({ readOnly: true }); } catch {}
+            try {
+              editor.updateOptions({ readOnly: true });
+            } catch {}
             clearInterval(poller);
           }
         } catch {}
@@ -281,9 +299,15 @@ function CollaborationSpace() {
       // cleanup on unmount/navigation/refresh
       cleanup = () => {
         clearInterval(poller);
-        try { provider.destroy(); } catch {}
-        try { editor.dispose(); } catch {}
-        try { model.dispose(); } catch {}
+        try {
+          provider.destroy();
+        } catch {}
+        try {
+          editor.dispose();
+        } catch {}
+        try {
+          model.dispose();
+        } catch {}
         providerRef.current = null;
         editorRef.current = null;
         modelRef.current = null;
@@ -299,7 +323,9 @@ function CollaborationSpace() {
 
   useEffect(() => {
     if (editorRef.current) {
-      try { editorRef.current.updateOptions({ readOnly }); } catch {}
+      try {
+        editorRef.current.updateOptions({ readOnly });
+      } catch {}
     }
   }, [readOnly]);
 

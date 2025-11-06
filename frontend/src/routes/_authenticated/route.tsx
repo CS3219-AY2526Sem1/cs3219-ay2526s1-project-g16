@@ -6,12 +6,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { COLLAB_SERVICE_URL } from "@/constants";
+import { authFetch } from "@/lib/utils";
 import {
   createFileRoute,
   Link,
   Outlet,
   redirect,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: ({ context, location }) => {
@@ -31,6 +35,24 @@ function Authenticated() {
   const { auth } = Route.useRouteContext();
   const { user, logout } = auth;
   const navigate = Route.useNavigate();
+
+  useEffect(() => {
+    (async () => {
+      if (!user) return;
+      try {
+        const response = await authFetch(
+          `${COLLAB_SERVICE_URL}/sessions/active`,
+        );
+        if (response.ok) {
+          const data: { id: string } = await response.json();
+          toast.success("Resuming your collaborative session...");
+          navigate({ to: "/collab", search: { roomId: data.id } });
+        }
+      } catch (error) {
+        console.error("Error fetching active session:", error);
+      }
+    })();
+  }, [user, navigate]);
 
   return (
     <>
