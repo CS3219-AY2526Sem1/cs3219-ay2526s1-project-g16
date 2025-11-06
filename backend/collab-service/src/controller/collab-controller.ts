@@ -16,6 +16,11 @@ const USER_SERVICE_BASE = process.env.USER_SERVICE_URL ?? "http://user:3000";
 
 // ====== Helpers ===== 
 
+function normalizeLanguage(input: unknown): "java" | "python" {
+  const v = String(input || "").toLowerCase();
+  return v === "java" ? "java" : "python"; 
+}
+
 // Accepts both Authorisation Header (API to API) AND cookies
 function extractAccessToken(req: Request): string | null {
   const h = req.headers.authorization;
@@ -87,7 +92,8 @@ export async function getActiveSessionByUsername(req: Request, res: Response) {
 // Frontend should retrieve question based on session.questionId after joinSession
 export async function createSession(req: Request, res: Response) {
   try {
-    const { topic, difficulty, questionId, id, expiresAt, user1ID, user2ID } = req.body; 
+    const { topic, difficulty, questionId, id, expiresAt, user1ID, user2ID, language } = req.body; 
+    const lang = normalizeLanguage(language);
     
     // Create collab session
     const session = await _createSession(
@@ -95,7 +101,8 @@ export async function createSession(req: Request, res: Response) {
       topic, 
       difficulty, 
       questionId,
-      expiresAt ? new Date(expiresAt) : undefined
+      expiresAt ? new Date(expiresAt) : undefined,
+      lang
     );
 
     // Upsert - user1 join
