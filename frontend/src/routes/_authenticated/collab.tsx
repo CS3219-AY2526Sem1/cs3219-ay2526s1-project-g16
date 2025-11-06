@@ -13,6 +13,7 @@ const BASE = (APIGATEWAY_URL || "").replace(/\/+$/, ""); // e.g. "http://whateve
 const HTTP_BASE = `${BASE}/collab`; // HTTP control plane
 const WS_BASE = `${BASE.replace(/^http\b/, "ws")}/collab/ws`; // WS data plane
 
+// === TYPES ===
 type CollabSession = {
   id: string;
   topic: string | null;
@@ -44,6 +45,7 @@ type Question = {
   deletedAt?: string | null;
 };
 
+// === HELPERS ===
 function normParam(v: unknown): string | undefined {
   if (v === undefined || v === null) return undefined;
   const s = String(v).trim();
@@ -61,6 +63,8 @@ export const Route = createFileRoute("/_authenticated/collab")({
   },
 });
 
+
+// === MAIN COLLAB SPACE LOGIC ===
 function CollaborationSpace() {
   const router = useRouter();
   const search = Route.useSearch();
@@ -77,7 +81,9 @@ function CollaborationSpace() {
   const [showSolution, setShowSolution] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
   
+  // === RETRIEVAL FROM COLLAB/QNS === 
   // Safety net if users refreshes or navigates to /collab without roomId in URL
   const sessionQ = useQuery({
     queryKey: ["collab-session-active"],
@@ -152,9 +158,39 @@ function CollaborationSpace() {
     },
   });
 
-
   const sessionLang = (sessionByIdQ.data?.language as "java" | "python") ?? "python";
   const monacoLang = toMonacoLanguageId(sessionLang);
+
+  // === HELPER TO END SESSION ===
+  async function endNow() {
+    if (!roomId || isEnding) return;
+    const ok = window.confirm("End this session for everyone?");
+    if (!ok) return;
+
+    setIsEnding(true);
+    try {
+      const res = await authFetch(`${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}/end`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        const msg = await res.text().catch(() => "");
+        throw new Error(`End failed: ${res.status} ${msg}`);
+      }
+
+      // client-side shutdown (the poller will also catch it)
+      setEndedBanner("This session has ended. Editing is disabled.");
+      setReadOnly(true);
+      try { providerRef.current?.destroy?.(); } catch {}
+      try { editorRef.current?.updateOptions?.({ readOnly: true }); } catch {}
+
+    } catch (e) {
+      alert((e as Error).message || "Failed to end session.");
+    } finally {
+      setIsEnding(false);
+    }
+  }
 
   useEffect(() => {
     if (!roomId) return;
@@ -333,6 +369,18 @@ function CollaborationSpace() {
               <span className="rounded-full border px-2 py-0.5 text-xs uppercase tracking-wide">
                 {sessionByIdQ.isLoading ? "…" : `Language: ${sessionLang}`}
               </span>
+
+              <div className="ml-auto" />
+
+              {/* End button */}
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={endNow}
+                disabled={!roomId || isEnding}
+              >
+                {isEnding ? "Ending…" : "End Session"}
+              </Button>
             </div>
 
             {topicNames.length > 0 && (
