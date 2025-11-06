@@ -1,5 +1,4 @@
 import jwt from "jsonwebtoken";
-import * as Y from 'yjs';
 import type { Request, Response } from "express";
 import type { attempt } from "../generated/prisma/index.js";
 import {
@@ -15,27 +14,17 @@ export async function addAttempt(req: Request, res: Response): Promise<void> {
     const accessToken = req.cookies?.jwt_access_token;
     const decoded = jwt.verify(accessToken, ACCESS_SECRET);
     const userId = decoded.sub;
-    const { collabId, questionId, yDocBase64 } = req.body;
+    const { collabId, questionId, content } = req.body;
 
     if (
       typeof userId !== "string" ||
       typeof collabId !== "string" ||
       typeof questionId !== "number" ||
-      typeof yDocBase64 !== "string"
+      typeof content !== "string"
     ) {
       res.status(400).json({ error: "Invalid input" });
       return;
     }
-
-    const update = Uint8Array.from(Buffer.from(yDocBase64, 'base64'));
-
-    // Decode Yjs document
-    const yDoc = new Y.Doc();
-    Y.applyUpdate(yDoc, update);
-
-    // Extract text
-    const yText = yDoc.getText('code');
-    const content = yText.toString();
 
     await _addAttempt(userId, collabId, questionId, content);
 
