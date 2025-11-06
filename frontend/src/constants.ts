@@ -7,6 +7,9 @@ export const QN_SERVICE_URL = import.meta.env.DEV
 export const MATCH_SERVICE_URL = import.meta.env.DEV
   ? import.meta.env.VITE_DEV_MATCH_SERVICE_URL
   : "http://34.142.162.255:8080/match";
+export const ATTEMPT_SERVICE_URL = import.meta.env.DEV
+  ? import.meta.env.VITE_DEV_ATTEMPT_SERVICE_URL
+  : "http://34.142.162.255:8080/attempt";
 export const APIGATEWAY_URL = import.meta.env.DEV
   ? import.meta.env.VITE_APIGATEWAY_URL
   : "http://34.142.162.255:8080";

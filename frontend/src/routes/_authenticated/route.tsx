@@ -3,7 +3,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -13,7 +12,6 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
-import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: ({ context, location }) => {
@@ -34,34 +32,32 @@ function Authenticated() {
   const { user, logout } = auth;
   const navigate = Route.useNavigate();
 
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   return (
     <>
       <header className="flex items-center justify-between gap-2 border-b p-4 px-6">
         <Link to="/">
-          <img src="logo_wordless.png" width={48} height={48} />
+          <img src="/logo_wordless.png" width={48} height={48} />
         </Link>
-        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+        <DropdownMenu>
           <DropdownMenuTrigger>
             <Avatar className="cursor-pointer">
               <AvatarFallback>{user?.username?.slice(0, 2)}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuItem className="font-medium" asChild>
+              <Link to="/user/$userId" params={{ userId: user?.id! }}>
+                My Account
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             {user?.isAdmin && (
-              <DropdownMenuItem>
-                <Link
-                  to="/manage-questions"
-                  onClick={() => setDropdownOpen(false)}
-                >
-                  Manage Questions
-                </Link>
+              <DropdownMenuItem asChild>
+                <Link to="/manage-questions">Manage Questions</Link>
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
-              className="font-medium text-red-500 data-[highlighted]:text-red-600"
+              variant="destructive"
               onClick={async () => {
                 await logout();
                 navigate({ to: "/login", search: { redirect: undefined } });
