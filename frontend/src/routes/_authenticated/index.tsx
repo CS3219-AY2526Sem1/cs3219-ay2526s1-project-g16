@@ -83,7 +83,10 @@ function Home() {
         }),
       });
       if (!res.ok) {
-        throw new Error("Match response was not ok");
+        throw new Error(
+          (await res.json()).error ??
+            "An error occurred while finding a match.",
+        );
       }
       return res.json();
     },
@@ -100,7 +103,7 @@ function Home() {
       }
     },
     onError: (error) => {
-      toast.error(`An error occurred: ${error.message}`);
+      toast.error(error.message);
     },
   });
 
