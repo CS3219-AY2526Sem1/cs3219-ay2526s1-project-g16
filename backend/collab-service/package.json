@@ -9,7 +9,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev:api": "nodemon --watch src --ext ts,js --exec \"node --loader ts-node/esm -r dotenv/config src/server.ts\"",
-    "dev:yws":  "nodemon --watch src --ext ts,js --exec \"node --loader ts-node/esm -r dotenv/config src/yws.ts\"",
+    "dev:yws": "nodemon --watch src --ext ts,js --exec \"node --loader ts-node/esm -r dotenv/config src/yws.ts\"",
     "dev": "concurrently -k -n API,YWS npm:dev:api npm:dev:yws",
     "start": "concurrently -k -n API,YWS npm:dev:api npm:dev:yws",
     "start:prod": "concurrently -k -n API,YWS npm:dev:api npm:dev:yws",
@@ -46,6 +46,7 @@
     "class-validator": "^0.14.2",
     "concurrently": "^9.2.1",
     "config": "^4.1.1",
+    "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dayjs": "^1.11.18",

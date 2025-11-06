@@ -19,6 +19,7 @@ export async function findMyActiveSession(userId: string) {
     where: { userId, leftAt: null, session: { status: "ACTIVE" } },
     select: { session: true },
   });
+  console.log("[collab-model] find my active session returns", row?.session ?? null);
   return row?.session ?? null; // null = they are not in active session and can join
 }
 
