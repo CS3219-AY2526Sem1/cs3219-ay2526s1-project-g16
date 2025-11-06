@@ -44,7 +44,7 @@ function Authenticated() {
           `${COLLAB_SERVICE_URL}/sessions/active`,
         );
         if (response.ok) {
-          const data: { id?: string } = await response.json();
+          const data: { id?: string } = (await response.json()).data;
           if (!data?.id) return;
           toast.success("Resuming your collaborative session...");
           navigate({ to: "/collab", search: { roomId: data.id } });
