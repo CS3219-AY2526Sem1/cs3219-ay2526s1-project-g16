@@ -40,7 +40,8 @@ export const createSession = async (
   topic: string,
   difficulty: string,
   questionId?: string | null,
-  expiresAt?: Date | null
+  expiresAt?: Date | null,
+  language: "java" | "python" = "python"  
 ) => {
   const exp = expiresAt ?? new Date(Date.now() + DEFAULT_TTL_MIN * 60_000);
   return await prisma.collabSession.create({
@@ -50,6 +51,7 @@ export const createSession = async (
       difficulty,
       questionId: questionId ?? null,
       expiresAt: exp ?? null,
+      language
     },
     include: { participants: true },
   });

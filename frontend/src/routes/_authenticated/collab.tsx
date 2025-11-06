@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { APIGATEWAY_URL, QN_SERVICE_URL } from "@/constants";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
 import { authFetch } from "@/lib/utils";
+import { ensureMonacoLanguage } from "@/lib/loadMonacoLang";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +20,7 @@ type CollabSession = {
   questionId: string | null;
   status: "ACTIVE" | "ENDED" | string;
   expiresAt: string | null;
+  language?: "java" | "python";
   participants?: Array<{ userId: string }>;
 };
 
@@ -46,6 +48,10 @@ function normParam(v: unknown): string | undefined {
   if (v === undefined || v === null) return undefined;
   const s = String(v).trim();
   return s.length ? s : undefined;
+}
+
+function toMonacoLanguageId(lang?: "java" | "python"): "java" | "python" {
+  return lang === "java" ? "java" : "python";
 }
 
 export const Route = createFileRoute("/_authenticated/collab")({
@@ -148,18 +154,23 @@ function CollaborationSpace() {
     },
   });
 
+
+  const sessionLang = (sessionByIdQ.data?.language as "java" | "python") ?? "python";
+  const monacoLang = toMonacoLanguageId(sessionLang);
+
   useEffect(() => {
     if (!roomId) return;
-    if (authRequired) {
-      setStatus("Not logged in");
-      return;
-    }
+    if (authRequired) { setStatus("Not logged in"); return; }
+    if (sessionByIdQ.isLoading) return; // wait to know the language
 
     let disposed = false;
     let cleanup = () => {};
 
     (async () => {
       setupMonacoEnvironment();
+
+      // Make sure the language is registered before creating the model/editor
+      await ensureMonacoLanguage(monacoLang);
 
       const [{ HocuspocusProvider }, Y, { MonacoBinding }, monaco] =
         await Promise.all([
@@ -190,7 +201,7 @@ function CollaborationSpace() {
       // 4a) Monaco model 
       const model = monaco.editor.createModel(
         "", // ytext.toString() -> N2H: code template
-        lang || "javascript"
+        monacoLang
       );
       model.setEOL(monaco.editor.EndOfLineSequence.LF); // normalise EOL
       modelRef.current = model;
@@ -202,7 +213,7 @@ function CollaborationSpace() {
         theme: "vs-dark",
         automaticLayout: true,
         minimap: { enabled: false },
-        tabSize: 2,
+        tabSize: 4,
         insertSpaces: true,
         readOnly,
         wordWrap: "off",
@@ -250,7 +261,7 @@ function CollaborationSpace() {
       disposed = true;
       cleanup();
     };
-  }, [roomId]);
+  }, [roomId, sessionByIdQ.isLoading]);
 
   useEffect(() => {
     if (editorRef.current) {
