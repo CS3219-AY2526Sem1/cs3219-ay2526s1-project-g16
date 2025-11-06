@@ -8,6 +8,11 @@ export type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
+  register: (
+    email: string,
+    username: string,
+    password: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -32,7 +37,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAuthenticated(false);
         }
       } catch (error) {
-        console.error("Error validating existing token:", error);
         setUser(null);
         setIsAuthenticated(false);
       } finally {
@@ -72,6 +76,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(true);
   };
 
+  const register = async (
+    email: string,
+    username: string,
+    password: string,
+  ) => {
+    let response: Response;
+    try {
+      response = await authFetch(`${USER_SERVICE_URL}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, username, password }),
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw new Error("An error has occurred. Please try again.");
+    }
+
+    if (!response.ok) {
+      throw new Error("Registration failed.");
+    }
+
+    const data: User = await response.json();
+    setUser(data);
+    setIsAuthenticated(true);
+  };
+
   const logout = async () => {
     try {
       return void (await authFetch(`${USER_SERVICE_URL}/logout`, {
@@ -86,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext value={{ user, isAuthenticated, login, logout }}>
+    <AuthContext value={{ user, isAuthenticated, login, register, logout }}>
       {children}
     </AuthContext>
   );
