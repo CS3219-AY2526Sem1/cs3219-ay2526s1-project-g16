@@ -272,7 +272,7 @@ function CollaborationSpace() {
       // 6) poll session liveness; if not ACTIVE → make editor readOnly
       const poller = setInterval(async () => {
         try {
-          const resp = await fetch(
+          const resp = await authFetch(
             `${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`,
             { method: "GET" },
           );
