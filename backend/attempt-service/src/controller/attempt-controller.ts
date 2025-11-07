@@ -18,7 +18,7 @@ export async function addAttempt(req: Request, res: Response): Promise<void> {
 
     if (
       typeof userId !== "string" ||
-      typeof collabId !== "string" ||
+      (collabId !== null && typeof collabId !== "string") ||
       typeof questionId !== "number" ||
       typeof content !== "string"
     ) {
