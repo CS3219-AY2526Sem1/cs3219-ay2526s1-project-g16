@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +14,9 @@ import {
   Link,
   Outlet,
   redirect,
+  useLocation,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -35,6 +37,8 @@ function Authenticated() {
   const { auth } = Route.useRouteContext();
   const { user, logout } = auth;
   const navigate = Route.useNavigate();
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  const location = useLocation();
 
   useEffect(() => {
     (async () => {
@@ -46,6 +50,7 @@ function Authenticated() {
         if (response.ok) {
           const data: { id?: string } = (await response.json()).data;
           if (!data?.id) return;
+          setCurrentRoomId(data.id);
           toast.success("Resuming your collaborative session...");
           navigate({ to: "/collab", search: { roomId: data.id } });
         }
@@ -61,6 +66,15 @@ function Authenticated() {
         <Link to="/">
           <img src="/logo_wordless.png" width={48} height={48} />
         </Link>
+
+        {currentRoomId && !location.pathname.startsWith("/collab") && (
+          <Button variant="secondary">
+            <Link to="/collab" search={{ roomId: currentRoomId }}>
+              Return to Collaborative Session
+            </Link>
+          </Button>
+        )}
+
         <DropdownMenu>
           <DropdownMenuTrigger>
             <Avatar className="cursor-pointer">
