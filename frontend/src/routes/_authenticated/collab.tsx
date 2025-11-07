@@ -88,6 +88,7 @@ function CollaborationSpace() {
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  const [participants, setParticipants] = useState<{ userId: string }[]>([]);
 
   // === RETRIEVAL FROM COLLAB/QNS ===
   // Safety net if users refreshes or navigates to /collab without roomId in URL
@@ -206,9 +207,7 @@ function CollaborationSpace() {
     mutationFn: async () => {
       const code = modelRef.current?.getValue();
       const userId = user?.id;
-      const collabId = sessionQ.data?.participants?.find(
-        (p) => p.userId !== userId,
-      )?.userId;
+      const collabId = participants.find((p) => p.userId !== userId)?.userId;
       const questionId = Number(qid);
 
       console.log(code, userId, collabId, questionId);
@@ -319,18 +318,20 @@ function CollaborationSpace() {
           const { data } = (await resp.json()) as {
             data: CollabSession | null;
           };
-          if (!data || data.status !== "ACTIVE") {
-            setStatus(`session ended (${data?.status ?? "unknown"})`);
-            setEndedBanner("This session has ended. Editing is disabled.");
-            try {
-              provider.destroy();
-            } catch {}
-            setReadOnly(true);
-            try {
-              editor.updateOptions({ readOnly: true });
-            } catch {}
-            clearInterval(poller);
+          if (data && data.status === "ACTIVE") {
+            return setParticipants(data.participants ?? []);
           }
+
+          setStatus(`session ended (${data?.status ?? "unknown"})`);
+          setEndedBanner("This session has ended. Editing is disabled.");
+          try {
+            provider.destroy();
+          } catch {}
+          setReadOnly(true);
+          try {
+            editor.updateOptions({ readOnly: true });
+          } catch {}
+          clearInterval(poller);
         } catch {}
       }, 2000);
 

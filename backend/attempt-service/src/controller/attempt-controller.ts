@@ -1,5 +1,5 @@
-import jwt from "jsonwebtoken";
 import type { Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import type { attempt } from "../generated/prisma/index.js";
 import {
   addAttempt as _addAttempt,
@@ -18,7 +18,7 @@ export async function addAttempt(req: Request, res: Response): Promise<void> {
 
     if (
       typeof userId !== "string" ||
-      (collabId !== null && typeof collabId !== "string") ||
+      (collabId != null && typeof collabId !== "string") ||
       typeof questionId !== "number" ||
       typeof content !== "string"
     ) {
