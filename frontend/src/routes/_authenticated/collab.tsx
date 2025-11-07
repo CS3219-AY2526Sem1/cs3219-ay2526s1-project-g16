@@ -211,8 +211,8 @@ function CollaborationSpace() {
       )?.userId;
       const questionId = Number(qid);
 
+      console.log(code, userId, collabId, questionId);
       if (!code || !roomId || !userId || !collabId || !questionId) {
-        toast.error("Missing data to save progress.");
         throw new Error("Missing data to save progress.");
       }
 
@@ -231,7 +231,7 @@ function CollaborationSpace() {
       toast.success("Progress saved successfully.");
     },
     onError: (error) => {
-      toast.error(`Error saving progress: ${error.message}`);
+      toast.error(error.message);
     },
   });
 
