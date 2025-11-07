@@ -12,7 +12,7 @@ datasource db {
 model attempt {
   id            String   @id @default(uuid())
   userId        String
-  collabId      String
+  collabId      String?
   question      Int
   code          String
   createdAt     DateTime @default(now())
