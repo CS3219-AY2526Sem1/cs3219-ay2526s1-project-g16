@@ -5,6 +5,7 @@ import {
   ATTEMPT_SERVICE_URL,
   COLLAB_SERVICE_URL,
   QN_SERVICE_URL,
+  CODERUNNER_URL
 } from "@/constants";
 import { ensureMonacoLanguage } from "@/lib/loadMonacoLang";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
@@ -89,9 +90,11 @@ function CollaborationSpace() {
   const [authRequired, setAuthRequired] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [participants, setParticipants] = useState<{ userId: string }[]>([]);
+  const [runOut, setRunOut] = useState<string>("");
+  const [runErr, setRunErr] = useState<string>("");
+  const [isRunning, setIsRunning] = useState(false);
 
   // === RETRIEVAL FROM COLLAB/QNS ===
-  // Safety net if users refreshes or navigates to /collab without roomId in URL
   const sessionQ = useQuery({
     queryKey: ["collab-session-active"],
     queryFn: async (): Promise<CollabSession | null> => {
@@ -128,7 +131,7 @@ function CollaborationSpace() {
   // Retrieve question
   const sessionByIdQ = useQuery({
     queryKey: ["collab-session", roomId],
-    enabled: !!roomId, // only when we know the room
+    enabled: !!roomId, 
     queryFn: async (): Promise<CollabSession | null> => {
       const res = await authFetch(
         `${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`,
@@ -169,7 +172,7 @@ function CollaborationSpace() {
     (sessionByIdQ.data?.language as "java" | "python") ?? "python";
   const monacoLang = toMonacoLanguageId(sessionLang);
 
-  // === HELPER TO END SESSION ===
+  // === TO END SESSION ===
   async function endNow() {
     if (!roomId || isEnding) return;
     const ok = window.confirm("End this session for everyone?");
@@ -202,6 +205,55 @@ function CollaborationSpace() {
       setIsEnding(false);
     }
   }
+
+  // === TO RUN CODE ===
+  async function runCodeNow() {
+    if (!roomId) return;
+    const code = modelRef.current?.getValue() ?? "";
+    if (!code.trim()) {
+      toast.info("Nothing to run yet.");
+      return;
+    }
+
+    setIsRunning(true);
+    setRunErr("");
+    setRunOut("");
+
+    try {
+      const res = await authFetch(`${CODERUNNER_URL.replace(/\/+$/, "")}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: sessionLang, code }),
+      });
+
+      const json = await res.json().catch(() => ({} as any));
+      if (!res.ok) {
+        const msg = json?.error || `Run failed (${res.status})`;
+        setRunErr(String(msg));
+        toast.error("Run failed.");
+        return;
+      }
+
+      const { stdout = "", stderr = "", exitCode = null } = json as {
+        stdout?: string; stderr?: string; exitCode?: number | null;
+      };
+
+      const banner = exitCode === 0 ? "" : `(exitCode=${exitCode ?? "?"})`;
+      const combined =
+        [stdout, stderr && `\n[stderr]\n${stderr}`, banner && `\n${banner}`]
+          .filter(Boolean)
+          .join("");
+
+      setRunOut(combined || "(no output)");
+      toast.success("Run complete.");
+    } catch (e: any) {
+      setRunErr(e?.message || "Run failed.");
+      toast.error("Run failed.");
+    } finally {
+      setIsRunning(false);
+    }
+  }
+
 
   const saveProgressMutation = useMutation({
     mutationFn: async () => {
@@ -446,7 +498,6 @@ function CollaborationSpace() {
                 Save Progress
               </Button>
 
-              {/* End button */}
               <Button
                 variant="destructive"
                 size="sm"
@@ -455,6 +506,16 @@ function CollaborationSpace() {
               >
                 {isEnding ? "Ending…" : "End Session"}
               </Button>
+
+              <Button
+                variant="default"
+                size="sm"
+                disabled={!roomId || isRunning}
+                onClick={runCodeNow}
+              >
+                {isRunning ? "Running…" : "Run Code"}
+              </Button>
+              
             </div>
 
             {topicNames.length > 0 && (
@@ -559,8 +620,20 @@ function CollaborationSpace() {
               <div>
                 <h3 className="mb-1 font-semibold">Output</h3>
                 <pre className="bg-muted overflow-x-auto whitespace-pre-wrap rounded-lg p-3 text-sm">
-                  {eout}
+                  {runErr ? runErr : (runOut || eout)}
                 </pre>
+
+                {(runOut || runErr) && (
+                  <div className="mt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setRunOut(""); setRunErr(""); }}
+                    >
+                      Clear Output
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
