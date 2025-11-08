@@ -93,7 +93,6 @@ function CollaborationSpace() {
   const [runOut, setRunOut] = useState<string>("");
   const [runErr, setRunErr] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
-  const seededOnceRef = useRef(false);
 
   // === RETRIEVAL FROM COLLAB/QNS ===
   const sessionQ = useQuery({
@@ -292,13 +291,15 @@ function CollaborationSpace() {
       setStatus("Not logged in");
       return;
     }
-    if (sessionByIdQ.isLoading) return;
+    if (sessionByIdQ.isLoading) return; // wait to know the language
 
     let disposed = false;
     let cleanup = () => {};
 
     (async () => {
       setupMonacoEnvironment();
+
+      // Make sure the language is registered before creating the model/editor
       await ensureMonacoLanguage(monacoLang);
 
       const [{ HocuspocusProvider }, Y, { MonacoBinding }, monaco] =
@@ -318,26 +319,12 @@ function CollaborationSpace() {
       // 2) prepare Yjs document + text
       const ydoc = provider.document as InstanceType<typeof Y.Doc>;
       const ytext = ydoc.getText("code");
-      const meta = ydoc.getMap("meta");
+      ydoc.getMap("meta");
 
-      if (!seededOnceRef.current) {
-        let shouldSeed = false;
-        ydoc.transact(() => {
-          if (!meta.get("templateSeeded")) {
-            meta.set("templateSeeded", true);
-            // optional: remember which language seeded it
-            if (!meta.get("templateLang")) meta.set("templateLang", monacoLang);
-            shouldSeed = true;
-          }
-        });
-
-        if (shouldSeed && ytext.length === 0) {
-          ytext.insert(0, getTemplateFor(monacoLang));
-        }
-
-        seededOnceRef.current = true;
+      if (ytext.length === 0) { // Seed 
+        ytext.insert(0, getTemplateFor(monacoLang));
       }
-      
+
       provider.on("status", (e: any) =>
         setStatus(`status: ${e.status} to room ${roomId}`),
       );
@@ -350,7 +337,7 @@ function CollaborationSpace() {
         ytext.toString(), 
         monacoLang,
       );
-      model.setEOL(monaco.editor.EndOfLineSequence.LF); 
+      model.setEOL(monaco.editor.EndOfLineSequence.LF); // normalise EOL
       modelRef.current = model;
 
       // 4) Monaco editor
