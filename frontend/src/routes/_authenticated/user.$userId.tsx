@@ -23,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/user/$userId")({
 });
 
 type AttemptData = {
+  id: string;
   questionId: string;
   title: string;
   difficulty: QuestionDifficulty;
@@ -35,6 +36,7 @@ function RouteComponent() {
   const { auth } = Route.useRouteContext();
   const { userId } = Route.useParams();
   const { user } = auth;
+  const navigate = Route.useNavigate();
 
   const userQueryFn = async (userId: string): Promise<User> => {
     const res = await authFetch(`${USER_SERVICE_URL}/${userId}`);
@@ -70,25 +72,33 @@ function RouteComponent() {
   };
 
   const questions = useQueries<UseQueryOptions<AttemptData>[]>({
-    queries: (attemptsQuery.data ?? []).map(({ question, code, collabId }) => ({
-      queryKey: ["question", question],
-      queryFn: async () => {
-        const [{ title, difficulty, id }, { username, id: collaboratorId }] =
-          await Promise.all([questionQueryFn(question), userQueryFn(collabId)]);
-        return {
-          title,
-          difficulty,
-          code,
-          collaborator: username,
-          collaboratorId,
-          questionId: id.toString(),
-        };
-      },
-    })),
+    queries: (attemptsQuery.data ?? []).map(
+      ({ question, code, collabId, id }) => ({
+        queryKey: ["question", question],
+        queryFn: async () => {
+          const [
+            { title, difficulty, id: questionId },
+            { username, id: collaboratorId },
+          ] = await Promise.all([
+            questionQueryFn(question),
+            userQueryFn(collabId),
+          ]);
+          return {
+            id,
+            title,
+            difficulty,
+            code,
+            collaborator: username,
+            collaboratorId,
+            questionId: questionId.toString(),
+          };
+        },
+        enabled: !!attemptsQuery.data,
+      }),
+    ),
   });
 
   const attempts = questions.map(({ data }) => data).filter((x) => !!x);
-  console.log(attempts.map((x) => x.collaborator));
 
   return (
     <main className="mx-100 my-16 flex flex-col gap-6">
@@ -102,6 +112,12 @@ function RouteComponent() {
           <div
             className="hover:bg-muted flex items-center gap-6 rounded-md p-4"
             key={i}
+            onClick={() =>
+              navigate({
+                to: `/attempt/$attemptId`,
+                params: { attemptId: attempt.id },
+              })
+            }
           >
             <div
               className={cn(

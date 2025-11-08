@@ -1,11 +1,11 @@
 // src/routes/_authenticated/collab.tsx
+import { CodeEditor } from "@/components/codeEditor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   ATTEMPT_SERVICE_URL,
+  CODERUNNER_URL,
   COLLAB_SERVICE_URL,
-  QN_SERVICE_URL,
-  CODERUNNER_URL
 } from "@/constants";
 import { ensureMonacoLanguage } from "@/lib/loadMonacoLang";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
@@ -29,26 +29,6 @@ type CollabSession = {
   expiresAt: string | null;
   language?: "java" | "python";
   participants?: Array<{ userId: string }>;
-};
-
-type QuestionExample = { input: string; output: string };
-type Question = {
-  id: number;
-  title: string;
-  statement: string;
-  difficulty: string;
-  constraints?: string[];
-  solutionOutline?: string;
-  exampleIO?: QuestionExample[];
-  metadata?: Record<string, unknown>;
-  topics?: {
-    questionId: number;
-    topicId: number;
-    topic: { id: number; name: string };
-  }[];
-  createdAt?: string;
-  updatedAt?: string;
-  deletedAt?: string | null;
 };
 
 // === HELPERS ===
@@ -85,7 +65,6 @@ function CollaborationSpace() {
 
   const [status, setStatus] = useState("status: initializing…");
   const [readOnly, setReadOnly] = useState(false);
-  const [showSolution, setShowSolution] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
@@ -124,14 +103,10 @@ function CollaborationSpace() {
     [urlRoomId, sessionQ.data?.id],
   );
 
-  const QN_BASE =
-    (QN_SERVICE_URL && QN_SERVICE_URL.trim()) || "http://localhost:3001";
-  const effectiveBase = QN_BASE.replace(/\/+$/, "");
-
   // Retrieve question
   const sessionByIdQ = useQuery({
     queryKey: ["collab-session", roomId],
-    enabled: !!roomId, 
+    enabled: !!roomId,
     queryFn: async (): Promise<CollabSession | null> => {
       const res = await authFetch(
         `${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`,
@@ -146,27 +121,6 @@ function CollaborationSpace() {
   });
 
   const qid = sessionByIdQ.data?.questionId || "";
-
-  const questionQ = useQuery({
-    queryKey: ["collab-question", qid, effectiveBase],
-    enabled: !!qid,
-    retry: 0,
-    refetchOnWindowFocus: "always",
-    queryFn: async (): Promise<Question> => {
-      const res = await authFetch(
-        `${effectiveBase}/questions/${encodeURIComponent(qid)}`,
-        {
-          method: "GET",
-          headers: { Accept: "application/json" },
-        },
-      );
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`Question fetch failed: ${res.status} ${text}`);
-      }
-      return await res.json();
-    },
-  });
 
   const sessionLang =
     (sessionByIdQ.data?.language as "java" | "python") ?? "python";
@@ -226,7 +180,7 @@ function CollaborationSpace() {
         body: JSON.stringify({ language: sessionLang, code }),
       });
 
-      const json = await res.json().catch(() => ({} as any));
+      const json = await res.json().catch(() => ({}) as any);
       if (!res.ok) {
         const msg = json?.error || `Run failed (${res.status})`;
         setRunErr(String(msg));
@@ -234,15 +188,24 @@ function CollaborationSpace() {
         return;
       }
 
-      const { stdout = "", stderr = "", exitCode = null } = json as {
-        stdout?: string; stderr?: string; exitCode?: number | null;
+      const {
+        stdout = "",
+        stderr = "",
+        exitCode = null,
+      } = json as {
+        stdout?: string;
+        stderr?: string;
+        exitCode?: number | null;
       };
 
       const banner = exitCode === 0 ? "" : `(exitCode=${exitCode ?? "?"})`;
-      const combined =
-        [stdout, stderr && `\n[stderr]\n${stderr}`, banner && `\n${banner}`]
-          .filter(Boolean)
-          .join("");
+      const combined = [
+        stdout,
+        stderr && `\n[stderr]\n${stderr}`,
+        banner && `\n${banner}`,
+      ]
+        .filter(Boolean)
+        .join("");
 
       setRunOut(combined || "(no output)");
       toast.success("Run complete.");
@@ -324,7 +287,8 @@ function CollaborationSpace() {
       const ytext = ydoc.getText("code");
       ydoc.getMap("meta");
 
-      if (ytext.length === 0) { // Seed 
+      if (ytext.length === 0) {
+        // Seed
         ytext.insert(0, getTemplateFor(monacoLang));
       }
 
@@ -336,10 +300,7 @@ function CollaborationSpace() {
       );
 
       // 3) Monaco model
-      const model = monaco.editor.createModel(
-        ytext.toString(), 
-        monacoLang,
-      );
+      const model = monaco.editor.createModel(ytext.toString(), monacoLang);
       model.setEOL(monaco.editor.EndOfLineSequence.LF); // normalise EOL
       modelRef.current = model;
 
@@ -422,34 +383,6 @@ function CollaborationSpace() {
     }
   }, [readOnly]);
 
-  const title =
-    questionQ.data?.title ??
-    (questionQ.isLoading
-      ? "Loading question…"
-      : qid
-        ? "Question unavailable"
-        : "Unavailable Room.");
-
-  const statement =
-    questionQ.data?.statement ??
-    (questionQ.isError
-      ? "Failed to load question."
-      : qid
-        ? "Fetching question…"
-        : "Unavailable room. Please try to get a Match again.");
-
-  const ex = questionQ.data?.exampleIO?.[0];
-  const ein = ex?.input ?? "";
-  const eout = ex?.output ?? "";
-
-  const topicNames = useMemo(() => {
-    const names =
-      questionQ.data?.topics
-        ?.map((t) => t.topic?.name)
-        .filter((n): n is string => !!n) ?? [];
-    return Array.from(new Set(names));
-  }, [questionQ.data?.topics]);
-
   const showNoSession = sessionQ.isSuccess && !sessionQ.data && !roomId;
 
   return (
@@ -471,162 +404,49 @@ function CollaborationSpace() {
         </>
       )}
 
-      <div className="mt-3 flex flex-col gap-3 lg:flex-row">
-        {/* Question Card */}
-        <Card className="h-[70vh] w-full overflow-hidden lg:w-[38%]">
-          <CardHeader className="pb-2">
-            {endedBanner && (
-              <div className="mb-2 rounded-md border border-neutral-600 bg-neutral-900/40 p-2 text-xs text-pink-200">
-                {endedBanner}
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="text-2xl font-semibold">{title}</div>
-
-              {/* Language badge */}
-              <span className="rounded-full border px-2 py-0.5 text-xs uppercase tracking-wide">
-                {sessionByIdQ.isLoading ? "…" : `Language: ${sessionLang}`}
-              </span>
-
-              <div className="ml-auto" />
-
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={!roomId || isEnding}
-                onClick={() => saveProgressMutation.mutate()}
-              >
-                Save Progress
-              </Button>
-
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={endNow}
-                disabled={!roomId || isEnding}
-              >
-                {isEnding ? "Ending…" : "End Session"}
-              </Button>
-
-              <Button
-                variant="default"
-                size="sm"
-                disabled={!roomId || isRunning}
-                onClick={runCodeNow}
-              >
-                {isRunning ? "Running…" : "Run Code"}
-              </Button>
-              
-            </div>
-
-            {topicNames.length > 0 && (
-              <div className="mt-1 flex flex-wrap gap-2">
-                {topicNames.map((name) => (
-                  <span
-                    key={name}
-                    className="text-muted-foreground rounded-full border px-2 py-0.5 text-xs"
-                  >
-                    {name}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {questionQ.data?.difficulty && (
-              <div className="text-muted-foreground mt-1 text-xs uppercase tracking-wide">
-                {questionQ.data.difficulty}
-              </div>
-            )}
-
-            {questionQ.isLoading && (
-              <div className="text-muted-foreground mt-2 text-xs">Loading…</div>
-            )}
-          </CardHeader>
-
-          <CardContent className="h-full overflow-y-auto whitespace-pre-wrap">
-            {questionQ.isError && (
-              <div className="mb-3 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-800">
-                {(questionQ.error as Error)?.message ||
-                  "Failed to load question."}
-              </div>
-            )}
-
-            {statement}
-
-            {questionQ.data?.constraints?.length ? (
-              <div className="mt-4">
-                <div className="mb-1 font-semibold">Constraints</div>
-                <ul className="list-disc pl-5 text-sm">
-                  {questionQ.data.constraints.map((c, i) => (
-                    <li key={i}>{c}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-
-            {questionQ.data?.solutionOutline && (
-              <div className="mt-4">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowSolution(!showSolution)}
-                >
-                  {showSolution ? "Hide Solution" : "Show Solution"}
-                </Button>
-
-                {showSolution && (
-                  <div className="mt-3 whitespace-pre-wrap border-t pt-2 text-sm">
-                    {questionQ.data.solutionOutline}
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Code Editor */}
-        <div className="flex-1">
-          <div
-            ref={containerRef}
-            className="h-[70vh] rounded-md border border-neutral-800"
-            id="editor"
-          />
-        </div>
-      </div>
-
-      <div className="mt-2 flex items-center justify-between text-xs text-neutral-600">
-        <div id="status">{status}</div>
-        {authRequired && (
-          <div className="mb-3 rounded-lg border border-red-400 bg-red-50 p-3 text-red-700">
-            You’re not logged in. Please sign in, then refresh this page.
-          </div>
-        )}
-      </div>
-
-      {(ein || eout) && (
-        <div className="mt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="text-2xl font-semibold">Example Input / Output</div>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <h3 className="mb-1 font-semibold">Input</h3>
-                <pre className="bg-muted overflow-x-auto whitespace-pre-wrap rounded-lg p-3 text-sm">
-                  {ein}
-                </pre>
-              </div>
-              <div>
-                <h3 className="mb-1 font-semibold">Output</h3>
-                <pre className="bg-muted overflow-x-auto whitespace-pre-wrap rounded-lg p-3 text-sm">
-                  {eout}
-                </pre>
-              </div>
-            </CardContent>
-          </Card>
+      {endedBanner && (
+        <div className="mb-2 rounded-md border border-neutral-600 bg-neutral-900/40 p-2 text-xs text-pink-200">
+          {endedBanner}
         </div>
       )}
+
+      <CodeEditor
+        sessionLang={sessionByIdQ.isLoading ? "…" : `Language: ${sessionLang}`}
+        qid={qid}
+        actionButtons={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!roomId || isEnding}
+              onClick={() => saveProgressMutation.mutate()}
+            >
+              Save Progress
+            </Button>
+
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={endNow}
+              disabled={!roomId || isEnding}
+            >
+              {isEnding ? "Ending…" : "End Session"}
+            </Button>
+
+            <Button
+              variant="default"
+              size="sm"
+              disabled={!roomId || isRunning}
+              onClick={runCodeNow}
+            >
+              {isRunning ? "Running…" : "Run Code"}
+            </Button>
+          </>
+        }
+        containerRef={containerRef}
+        status={status}
+        authRequired={authRequired}
+      />
 
       <div className="mt-4">
         <Card>
@@ -635,7 +455,7 @@ function CollaborationSpace() {
           </CardHeader>
           <CardContent>
             <pre className="bg-muted overflow-x-auto whitespace-pre-wrap rounded-lg p-3 text-sm">
-              {runErr ? runErr : (runOut || "— No output yet —")}
+              {runErr ? runErr : runOut || "— No output yet —"}
             </pre>
 
             <div className="mt-2 flex gap-2">
@@ -661,7 +481,6 @@ function CollaborationSpace() {
           </CardContent>
         </Card>
       </div>
-
     </main>
   );
 }
