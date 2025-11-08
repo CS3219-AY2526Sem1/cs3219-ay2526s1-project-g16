@@ -254,7 +254,6 @@ function CollaborationSpace() {
     }
   }
 
-
   const saveProgressMutation = useMutation({
     mutationFn: async () => {
       const code = modelRef.current?.getValue();
@@ -322,6 +321,10 @@ function CollaborationSpace() {
       const ytext = ydoc.getText("code");
       ydoc.getMap("meta");
 
+      if (ytext.length === 0) { // Seed 
+        ytext.insert(0, getTemplateFor(monacoLang));
+      }
+
       provider.on("status", (e: any) =>
         setStatus(`status: ${e.status} to room ${roomId}`),
       );
@@ -329,19 +332,15 @@ function CollaborationSpace() {
         setStatus(`status: closed (upgrade failed or server closed)`),
       );
 
-      // 3) initial template if doc is empty - i will leave empty for test
-      // const initial = getTemplateFor((lang as keyof typeof templates) || "javascript");
-      // if (ytext.length === 0) ytext.insert(0, initial);
-
-      // 4a) Monaco model
+      // 3) Monaco model
       const model = monaco.editor.createModel(
-        "", // ytext.toString() -> N2H: code template
+        ytext.toString(), 
         monacoLang,
       );
       model.setEOL(monaco.editor.EndOfLineSequence.LF); // normalise EOL
       modelRef.current = model;
 
-      // 4b) Monaco editor
+      // 4) Monaco editor
       const editor = monaco.editor.create(containerRef.current!, {
         model,
         language: monacoLang,
@@ -410,7 +409,7 @@ function CollaborationSpace() {
       disposed = true;
       cleanup();
     };
-  }, [roomId, sessionByIdQ.isLoading]);
+  }, [roomId, sessionByIdQ.isLoading, monacoLang]);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -606,9 +605,7 @@ function CollaborationSpace() {
         <div className="mt-4">
           <Card>
             <CardHeader className="pb-2">
-              <div className="text-2xl font-semibold">
-                Example Input / Output
-              </div>
+              <div className="text-2xl font-semibold">Example Input / Output</div>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -620,45 +617,71 @@ function CollaborationSpace() {
               <div>
                 <h3 className="mb-1 font-semibold">Output</h3>
                 <pre className="bg-muted overflow-x-auto whitespace-pre-wrap rounded-lg p-3 text-sm">
-                  {runErr ? runErr : (runOut || eout)}
+                  {eout}
                 </pre>
-
-                {(runOut || runErr) && (
-                  <div className="mt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => { setRunOut(""); setRunErr(""); }}
-                    >
-                      Clear Output
-                    </Button>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
         </div>
       )}
+
+      <div className="mt-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="text-2xl font-semibold">Runtime Output</div>
+          </CardHeader>
+          <CardContent>
+            <pre className="bg-muted overflow-x-auto whitespace-pre-wrap rounded-lg p-3 text-sm">
+              {runErr ? runErr : (runOut || "— No output yet —")}
+            </pre>
+
+            <div className="mt-2 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setRunOut("");
+                  setRunErr("");
+                }}
+                disabled={!runOut && !runErr}
+              >
+                Clear Output
+              </Button>
+              <Button
+                size="sm"
+                onClick={runCodeNow}
+                disabled={!roomId || isRunning}
+              >
+                {isRunning ? "Running…" : "Run Again"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
     </main>
   );
 }
 
-// const templates = {
-//   javascript: `// JS
-// function main(){ console.log('hello'); }`,
-//   typescript: `// TS
-// export function main(): void { console.log('hello'); }`,
-//   python: `# Python
-// def main():
-//     print("hello")`,
-//   cpp: `// C++
-// #include <bits/stdc++.h>
-// using namespace std;
-// int main(){ cout << "hello\\n"; }`,
-//   java: `// Java
-// class Main { public static void main(String[] args){ System.out.println("hello"); } }`,
-// } as const;
+const templates = {
+  python: `# Python
+def solve():
+    # write your solution
+    pass
 
-// function getTemplateFor(lang: keyof typeof templates) {
-//   return templates[lang] ?? templates.javascript;
-// }
+if __name__ == "__main__":
+    print("hello")`,
+  java: `// Java
+import java.io.*;
+import java.util.*;
+
+public class Main {
+  public static void main(String[] args){
+    System.out.println("hello");
+  }
+}`,
+} as const;
+
+function getTemplateFor(lang: keyof typeof templates) {
+  return templates[lang] ?? templates.python; // fall back to python
+}
