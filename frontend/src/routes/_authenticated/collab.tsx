@@ -210,8 +210,11 @@ function CollaborationSpace() {
       const collabId = participants.find((p) => p.userId !== userId)?.userId;
       const questionId = Number(qid);
 
-      console.log(code, userId, collabId, questionId);
-      if (!code || !roomId || !userId || !collabId || !questionId) {
+      if (!code) {
+        throw new Error("No code to save!");
+      }
+
+      if (!roomId || !userId || !questionId) {
         throw new Error("Missing data to save progress.");
       }
 
