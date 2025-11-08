@@ -223,6 +223,41 @@ function Home() {
     );
   }, [questionSearch, questionsQuery.data, resolveTopicsForQuestion]);
 
+  const topicChoices = (
+    difficultyLevels.every((d) => !d) // if no difficulty selected, show all topics
+      ? (topicsQuery.data?.topics ?? [])
+      : difficultyLevels
+          .flatMap((difficulty) =>
+            questionsQuery.data?.items.filter(
+              (q) => q.difficulty === difficulty,
+            ),
+          )
+          .flatMap((q) => q?.topics)
+          .filter((t) => !!t)
+          .map((t) => t.topic)
+          .filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i)
+  ).map(({ name }) => ({
+    value: name,
+    label: name,
+  }));
+
+  const difficultyChoices = (
+    questionTopics.every((t) => !t) // if no topic selected, show all difficulties
+      ? questionDifficulties
+      : questionTopics
+          .flatMap((topic) =>
+            questionsQuery.data?.items.filter((q) =>
+              q.topics.some((qt) => qt.topic.name === topic),
+            ),
+          )
+          .filter((q) => !!q)
+          .map((q) => q.difficulty)
+          .filter((v, i, a) => a.indexOf(v) === i)
+  ).map((level) => ({
+    value: level,
+    label: level,
+  }));
+
   return (
     <main className="mt-24 flex w-full flex-col items-center justify-center gap-8">
       {matchState.status === "idle" ? (
@@ -249,12 +284,7 @@ function Home() {
                 <span className="text-right">I want to do</span>
                 <MultiMatchMeSelect
                   placeholder="Question Topics"
-                  choices={
-                    topicsQuery.data?.topics?.map(({ name }) => ({
-                      value: name,
-                      label: name,
-                    })) ?? []
-                  }
+                  choices={topicChoices}
                   triggerClassName="text-blue-500"
                   itemClassName="text-blue-900/80 focus:text-blue-500 data-[state=checked]:text-blue-500 [&_svg]:!text-blue-800/50"
                   items={questionTopics}
@@ -265,10 +295,7 @@ function Home() {
                 <span className="text-right">at difficulty level</span>
                 <MultiMatchMeSelect
                   placeholder="Difficulty Level"
-                  choices={questionDifficulties.map((level) => ({
-                    value: level,
-                    label: level,
-                  }))}
+                  choices={difficultyChoices}
                   triggerClassName="text-orange-500"
                   itemClassName="text-orange-900/80 focus:text-orange-500 data-[state=checked]:text-orange-500 [&_svg]:!text-orange-800/50"
                   items={difficultyLevels}
