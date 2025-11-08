@@ -5,6 +5,7 @@ import {
   ATTEMPT_SERVICE_URL,
   COLLAB_SERVICE_URL,
   QN_SERVICE_URL,
+  CODERUNNER_URL
 } from "@/constants";
 import { ensureMonacoLanguage } from "@/lib/loadMonacoLang";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
@@ -89,9 +90,11 @@ function CollaborationSpace() {
   const [authRequired, setAuthRequired] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [participants, setParticipants] = useState<{ userId: string }[]>([]);
+  const [runOut, setRunOut] = useState<string>("");
+  const [runErr, setRunErr] = useState<string>("");
+  const [isRunning, setIsRunning] = useState(false);
 
   // === RETRIEVAL FROM COLLAB/QNS ===
-  // Safety net if users refreshes or navigates to /collab without roomId in URL
   const sessionQ = useQuery({
     queryKey: ["collab-session-active"],
     queryFn: async (): Promise<CollabSession | null> => {
@@ -128,7 +131,7 @@ function CollaborationSpace() {
   // Retrieve question
   const sessionByIdQ = useQuery({
     queryKey: ["collab-session", roomId],
-    enabled: !!roomId, // only when we know the room
+    enabled: !!roomId, 
     queryFn: async (): Promise<CollabSession | null> => {
       const res = await authFetch(
         `${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`,
@@ -169,7 +172,7 @@ function CollaborationSpace() {
     (sessionByIdQ.data?.language as "java" | "python") ?? "python";
   const monacoLang = toMonacoLanguageId(sessionLang);
 
-  // === HELPER TO END SESSION ===
+  // === TO END SESSION ===
   async function endNow() {
     if (!roomId || isEnding) return;
     const ok = window.confirm("End this session for everyone?");
@@ -200,6 +203,54 @@ function CollaborationSpace() {
       alert((e as Error).message || "Failed to end session.");
     } finally {
       setIsEnding(false);
+    }
+  }
+
+  // === TO RUN CODE ===
+  async function runCodeNow() {
+    if (!roomId) return;
+    const code = modelRef.current?.getValue() ?? "";
+    if (!code.trim()) {
+      toast.info("Nothing to run yet.");
+      return;
+    }
+
+    setIsRunning(true);
+    setRunErr("");
+    setRunOut("");
+
+    try {
+      const res = await authFetch(`${CODERUNNER_URL.replace(/\/+$/, "")}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: sessionLang, code }),
+      });
+
+      const json = await res.json().catch(() => ({} as any));
+      if (!res.ok) {
+        const msg = json?.error || `Run failed (${res.status})`;
+        setRunErr(String(msg));
+        toast.error("Run failed.");
+        return;
+      }
+
+      const { stdout = "", stderr = "", exitCode = null } = json as {
+        stdout?: string; stderr?: string; exitCode?: number | null;
+      };
+
+      const banner = exitCode === 0 ? "" : `(exitCode=${exitCode ?? "?"})`;
+      const combined =
+        [stdout, stderr && `\n[stderr]\n${stderr}`, banner && `\n${banner}`]
+          .filter(Boolean)
+          .join("");
+
+      setRunOut(combined || "(no output)");
+      toast.success("Run complete.");
+    } catch (e: any) {
+      setRunErr(e?.message || "Run failed.");
+      toast.error("Run failed.");
+    } finally {
+      setIsRunning(false);
     }
   }
 
@@ -273,6 +324,10 @@ function CollaborationSpace() {
       const ytext = ydoc.getText("code");
       ydoc.getMap("meta");
 
+      if (ytext.length === 0) { // Seed 
+        ytext.insert(0, getTemplateFor(monacoLang));
+      }
+
       provider.on("status", (e: any) =>
         setStatus(`status: ${e.status} to room ${roomId}`),
       );
@@ -280,19 +335,15 @@ function CollaborationSpace() {
         setStatus(`status: closed (upgrade failed or server closed)`),
       );
 
-      // 3) initial template if doc is empty - i will leave empty for test
-      // const initial = getTemplateFor((lang as keyof typeof templates) || "javascript");
-      // if (ytext.length === 0) ytext.insert(0, initial);
-
-      // 4a) Monaco model
+      // 3) Monaco model
       const model = monaco.editor.createModel(
-        "", // ytext.toString() -> N2H: code template
+        ytext.toString(), 
         monacoLang,
       );
       model.setEOL(monaco.editor.EndOfLineSequence.LF); // normalise EOL
       modelRef.current = model;
 
-      // 4b) Monaco editor
+      // 4) Monaco editor
       const editor = monaco.editor.create(containerRef.current!, {
         model,
         language: monacoLang,
@@ -361,7 +412,7 @@ function CollaborationSpace() {
       disposed = true;
       cleanup();
     };
-  }, [roomId, sessionByIdQ.isLoading]);
+  }, [roomId, sessionByIdQ.isLoading, monacoLang]);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -449,7 +500,6 @@ function CollaborationSpace() {
                 Save Progress
               </Button>
 
-              {/* End button */}
               <Button
                 variant="destructive"
                 size="sm"
@@ -458,6 +508,16 @@ function CollaborationSpace() {
               >
                 {isEnding ? "Ending…" : "End Session"}
               </Button>
+
+              <Button
+                variant="default"
+                size="sm"
+                disabled={!roomId || isRunning}
+                onClick={runCodeNow}
+              >
+                {isRunning ? "Running…" : "Run Code"}
+              </Button>
+              
             </div>
 
             {topicNames.length > 0 && (
@@ -548,9 +608,7 @@ function CollaborationSpace() {
         <div className="mt-4">
           <Card>
             <CardHeader className="pb-2">
-              <div className="text-2xl font-semibold">
-                Example Input / Output
-              </div>
+              <div className="text-2xl font-semibold">Example Input / Output</div>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -569,26 +627,64 @@ function CollaborationSpace() {
           </Card>
         </div>
       )}
+
+      <div className="mt-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="text-2xl font-semibold">Runtime Output</div>
+          </CardHeader>
+          <CardContent>
+            <pre className="bg-muted overflow-x-auto whitespace-pre-wrap rounded-lg p-3 text-sm">
+              {runErr ? runErr : (runOut || "— No output yet —")}
+            </pre>
+
+            <div className="mt-2 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setRunOut("");
+                  setRunErr("");
+                }}
+                disabled={!runOut && !runErr}
+              >
+                Clear Output
+              </Button>
+              <Button
+                size="sm"
+                onClick={runCodeNow}
+                disabled={!roomId || isRunning}
+              >
+                {isRunning ? "Running…" : "Run Again"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
     </main>
   );
 }
 
-// const templates = {
-//   javascript: `// JS
-// function main(){ console.log('hello'); }`,
-//   typescript: `// TS
-// export function main(): void { console.log('hello'); }`,
-//   python: `# Python
-// def main():
-//     print("hello")`,
-//   cpp: `// C++
-// #include <bits/stdc++.h>
-// using namespace std;
-// int main(){ cout << "hello\\n"; }`,
-//   java: `// Java
-// class Main { public static void main(String[] args){ System.out.println("hello"); } }`,
-// } as const;
+const templates = {
+  python: `# Python
+def solve():
+    # write your solution
+    pass
 
-// function getTemplateFor(lang: keyof typeof templates) {
-//   return templates[lang] ?? templates.javascript;
-// }
+if __name__ == "__main__":
+    print("hello")`,
+  java: `// Java
+import java.io.*;
+import java.util.*;
+
+public class Main {
+  public static void main(String[] args){
+    System.out.println("hello");
+  }
+}`,
+} as const;
+
+function getTemplateFor(lang: keyof typeof templates) {
+  return templates[lang] ?? templates.python; // fall back to python
+}
