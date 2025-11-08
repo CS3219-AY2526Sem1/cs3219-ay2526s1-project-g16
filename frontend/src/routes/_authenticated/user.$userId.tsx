@@ -92,13 +92,9 @@ function RouteComponent() {
 
   return (
     <main className="mx-100 my-16 flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-medium">
-          {userQuery.data?.username ?? user?.username}
-        </h1>
-        <span className="text-muted-foreground">userdisplayName</span>
-        <p className="mt-6">Bio</p>
-      </div>
+      <h1 className="text-3xl font-medium">
+        {userQuery.data?.username ?? user?.username}
+      </h1>
       <Separator />
       <h1 className="text-2xl font-medium">Question History</h1>
       <div>
