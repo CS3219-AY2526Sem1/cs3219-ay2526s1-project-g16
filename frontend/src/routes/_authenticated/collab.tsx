@@ -205,12 +205,12 @@ function CollaborationSpace() {
 
   const saveProgressMutation = useMutation({
     mutationFn: async () => {
-      const code = modelRef.current?.getValue();
+      const content = modelRef.current?.getValue();
       const userId = user?.id;
       const collabId = participants.find((p) => p.userId !== userId)?.userId;
       const questionId = Number(qid);
 
-      if (!code) {
+      if (!content) {
         throw new Error("No code to save!");
       }
 
@@ -221,7 +221,7 @@ function CollaborationSpace() {
       const res = await authFetch(`${ATTEMPT_SERVICE_URL}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, collabId, questionId, code }),
+        body: JSON.stringify({ collabId, questionId, content }),
       });
 
       if (!res.ok) {
