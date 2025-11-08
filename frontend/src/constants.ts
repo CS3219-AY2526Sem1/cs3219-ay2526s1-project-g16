@@ -13,3 +13,6 @@ export const ATTEMPT_SERVICE_URL = import.meta.env.DEV
 export const COLLAB_SERVICE_URL = import.meta.env.DEV
   ? import.meta.env.VITE_DEV_COLLAB_SERVICE_URL
   : "http://34.142.162.255:8080/collab";
+export const CODERUNNER_URL = import.meta.env.DEV
+  ? import.meta.env.VITE_DEV_CODERUNNER_SERVICE_URL
+  : "http://34.142.162.255:3005";
