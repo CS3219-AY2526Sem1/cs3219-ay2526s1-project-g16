@@ -322,12 +322,15 @@ function CollaborationSpace() {
       // 2) prepare Yjs document + text
       const ydoc = provider.document as InstanceType<typeof Y.Doc>;
       const ytext = ydoc.getText("code");
-      ydoc.getMap("meta");
+      const meta = ydoc.getMap("meta");
 
-      if (ytext.length === 0) { // Seed 
-        ytext.insert(0, getTemplateFor(monacoLang));
-      }
-
+      ydoc.transact(() => {
+        if (!meta.get("templateSeeded") && ytext.length === 0) {
+          meta.set("templateSeeded", true);
+          meta.set("templateLang", monacoLang);
+          ytext.insert(0, getTemplateFor(monacoLang));
+        }
+      });
       provider.on("status", (e: any) =>
         setStatus(`status: ${e.status} to room ${roomId}`),
       );
