@@ -20,6 +20,7 @@ export async function requestMatch(req: Request, res: Response) {
     await checkIfUserInMatch(req, res);
     console.log("User not in match!")
     const body: TicketInput = ticketSchema.parse(req.body);
+    console.log(`User is ${body}`);
     const result = await enqueueOrMatch(body);
 
     const base = `${req.protocol}://${req.get("host")}`;
