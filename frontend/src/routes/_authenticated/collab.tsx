@@ -126,6 +126,40 @@ function CollaborationSpace() {
     (sessionByIdQ.data?.language as "java" | "python") ?? "python";
   const monacoLang = toMonacoLanguageId(sessionLang);
 
+  const saveProgressMutation = useMutation({
+    mutationFn: async () => {
+      const content = modelRef.current?.getValue();
+      const userId = user?.id;
+      const collabId = participants.find((p) => p.userId !== userId)?.userId;
+      const questionId = Number(qid);
+
+      if (!content) {
+        throw new Error("No code to save!");
+      }
+
+      if (!roomId || !userId || !questionId) {
+        throw new Error("Missing data to save progress.");
+      }
+
+      const res = await authFetch(`${ATTEMPT_SERVICE_URL}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collabId, questionId, content }),
+      });
+
+      if (!res.ok) {
+        toast.error("Failed to save progress.");
+        throw new Error("Failed to save progress.");
+      }
+    },
+    onSuccess: () => {
+      toast.success("Progress saved successfully.");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   // === TO END SESSION ===
   async function endNow() {
     if (!roomId || isEnding) return;
@@ -147,6 +181,7 @@ function CollaborationSpace() {
       // client-side shutdown (the poller will also catch it)
       setEndedBanner("This session has ended. Editing is disabled.");
       setReadOnly(true);
+      saveProgressMutation.mutate();
       try {
         providerRef.current?.destroy?.();
       } catch {}
@@ -216,40 +251,6 @@ function CollaborationSpace() {
       setIsRunning(false);
     }
   }
-
-  const saveProgressMutation = useMutation({
-    mutationFn: async () => {
-      const content = modelRef.current?.getValue();
-      const userId = user?.id;
-      const collabId = participants.find((p) => p.userId !== userId)?.userId;
-      const questionId = Number(qid);
-
-      if (!content) {
-        throw new Error("No code to save!");
-      }
-
-      if (!roomId || !userId || !questionId) {
-        throw new Error("Missing data to save progress.");
-      }
-
-      const res = await authFetch(`${ATTEMPT_SERVICE_URL}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ collabId, questionId, content }),
-      });
-
-      if (!res.ok) {
-        toast.error("Failed to save progress.");
-        throw new Error("Failed to save progress.");
-      }
-    },
-    onSuccess: () => {
-      toast.success("Progress saved successfully.");
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
 
   useEffect(() => {
     if (!roomId) return;
@@ -339,6 +340,7 @@ function CollaborationSpace() {
 
           setStatus(`session ended (${data?.status ?? "unknown"})`);
           setEndedBanner("This session has ended. Editing is disabled.");
+          saveProgressMutation.mutate();
           try {
             provider.destroy();
           } catch {}
