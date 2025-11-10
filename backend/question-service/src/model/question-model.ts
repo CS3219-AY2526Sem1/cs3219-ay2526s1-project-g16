@@ -114,21 +114,29 @@ export const listQuestions = async (params: ListQuestionsParams = {}) => {
           createdAt: orderBy === "oldest" ? "asc" : "desc",
         };
 
-  const query: Prisma.QuestionFindManyArgs = {
-    where,
-    orderBy: orderByClause,
-  };
 
-  if (typeof take === "number") {
-    query.skip = skip ?? 0;
-    query.take = take;
-  }
+    const findManyArgs: Prisma.QuestionFindManyArgs = {
+      where,
+      orderBy: orderByClause,
+      include: { topics: { include: { topic: true } } },
+    };
 
-  const items = await prisma.question.findMany(query);
-  const total = await prisma.question.count({ where });
+    if (typeof take === "number") {
+      findManyArgs.skip = skip ?? 0;
+      findManyArgs.take = take;
+    }
 
-  return { items, total, skip, take };
+    const [items, total] = await prisma.$transaction([
+      prisma.question.findMany(findManyArgs),
+      prisma.question.count({ where }),
+    ]);
 
+    return {
+      items,
+      total,
+      skip,
+      take,
+    };
 };
 
 export type UpdateQuestionInput = {
