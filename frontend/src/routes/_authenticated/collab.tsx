@@ -181,7 +181,6 @@ function CollaborationSpace() {
       // client-side shutdown (the poller will also catch it)
       setEndedBanner("This session has ended. Editing is disabled.");
       setReadOnly(true);
-      saveProgressMutation.mutate();
       try {
         providerRef.current?.destroy?.();
       } catch {}
