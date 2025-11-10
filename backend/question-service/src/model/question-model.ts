@@ -124,7 +124,11 @@ export const listQuestions = async (params: ListQuestionsParams = {}) => {
     query.take = take;
   }
 
-  return prisma.question.findMany(query);
+  const items = await prisma.question.findMany(query);
+  const total = await prisma.question.count({ where });
+
+  return { items, total, skip, take };
+
 };
 
 export type UpdateQuestionInput = {
