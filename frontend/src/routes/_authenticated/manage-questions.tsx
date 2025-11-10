@@ -24,7 +24,7 @@ function ManageQuestions() {
   const qnsQuery = useQuery<ListQuestionsResponse>({
     queryKey: ["questions"],
     queryFn: async () => {
-      const res = await authFetch(`${QN_SERVICE_URL}/questions`);
+      const res = await authFetch(`${QN_SERVICE_URL}/questions?take=all`);
       if (!res.ok) {
         throw new Error("Questions response was not ok");
       }
