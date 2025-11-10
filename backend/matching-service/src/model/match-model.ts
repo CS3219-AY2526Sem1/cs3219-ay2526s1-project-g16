@@ -323,17 +323,18 @@ export async function getQuestionId(
 
   try {
     const response = await axios.get(`${baseURL}/questions`, { params });
-
+    const items = response.data.items;
     console.log("Response received:", response.data.items);
 
-    const ids = response.data.items.map((item: any) => item.id);
-
-    if (!Array.isArray(ids) || ids.length === 0) {
+    if (!Array.isArray(items) || items.length === 0) {
       throw new Error("No question found for the given filters");
     }
 
-    console.log("Got QuestionID:", ids[0]);
-    return String(ids[0]);
+    const randomIndex = Math.floor(Math.random() * items.length);
+    const randomId = items[randomIndex].id;
+
+    console.log(`Got Random QuestionID: ${randomId} (index ${randomIndex})`);
+    return String(randomId);
   } catch (err: any) {
     console.error("Error fetching question ID:", err.message);
     throw err;
