@@ -17,6 +17,7 @@ import { Route as UnauthenticatedLoginRouteImport } from './routes/_unauthentica
 import { Route as AuthenticatedManageQuestionsRouteImport } from './routes/_authenticated/manage-questions'
 import { Route as AuthenticatedCollabRouteImport } from './routes/_authenticated/collab'
 import { Route as AuthenticatedUserUserIdRouteImport } from './routes/_authenticated/user.$userId'
+import { Route as AuthenticatedAttemptAttemptIdRouteImport } from './routes/_authenticated/attempt.$attemptId'
 
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
@@ -57,6 +58,12 @@ const AuthenticatedUserUserIdRoute = AuthenticatedUserUserIdRouteImport.update({
   path: '/user/$userId',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAttemptAttemptIdRoute =
+  AuthenticatedAttemptAttemptIdRouteImport.update({
+    id: '/attempt/$attemptId',
+    path: '/attempt/$attemptId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/collab': typeof AuthenticatedCollabRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof UnauthenticatedLoginRoute
   '/register': typeof UnauthenticatedRegisterRoute
   '/': typeof AuthenticatedIndexRoute
+  '/attempt/$attemptId': typeof AuthenticatedAttemptAttemptIdRoute
   '/user/$userId': typeof AuthenticatedUserUserIdRoute
 }
 export interface FileRoutesByTo {
@@ -72,6 +80,7 @@ export interface FileRoutesByTo {
   '/login': typeof UnauthenticatedLoginRoute
   '/register': typeof UnauthenticatedRegisterRoute
   '/': typeof AuthenticatedIndexRoute
+  '/attempt/$attemptId': typeof AuthenticatedAttemptAttemptIdRoute
   '/user/$userId': typeof AuthenticatedUserUserIdRoute
 }
 export interface FileRoutesById {
@@ -83,6 +92,7 @@ export interface FileRoutesById {
   '/_unauthenticated/login': typeof UnauthenticatedLoginRoute
   '/_unauthenticated/register': typeof UnauthenticatedRegisterRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/attempt/$attemptId': typeof AuthenticatedAttemptAttemptIdRoute
   '/_authenticated/user/$userId': typeof AuthenticatedUserUserIdRoute
 }
 export interface FileRouteTypes {
@@ -93,6 +103,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/'
+    | '/attempt/$attemptId'
     | '/user/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -101,6 +112,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/'
+    | '/attempt/$attemptId'
     | '/user/$userId'
   id:
     | '__root__'
@@ -111,6 +123,7 @@ export interface FileRouteTypes {
     | '/_unauthenticated/login'
     | '/_unauthenticated/register'
     | '/_authenticated/'
+    | '/_authenticated/attempt/$attemptId'
     | '/_authenticated/user/$userId'
   fileRoutesById: FileRoutesById
 }
@@ -177,6 +190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUserUserIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/attempt/$attemptId': {
+      id: '/_authenticated/attempt/$attemptId'
+      path: '/attempt/$attemptId'
+      fullPath: '/attempt/$attemptId'
+      preLoaderRoute: typeof AuthenticatedAttemptAttemptIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -184,6 +204,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCollabRoute: typeof AuthenticatedCollabRoute
   AuthenticatedManageQuestionsRoute: typeof AuthenticatedManageQuestionsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAttemptAttemptIdRoute: typeof AuthenticatedAttemptAttemptIdRoute
   AuthenticatedUserUserIdRoute: typeof AuthenticatedUserUserIdRoute
 }
 
@@ -191,6 +212,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCollabRoute: AuthenticatedCollabRoute,
   AuthenticatedManageQuestionsRoute: AuthenticatedManageQuestionsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAttemptAttemptIdRoute: AuthenticatedAttemptAttemptIdRoute,
   AuthenticatedUserUserIdRoute: AuthenticatedUserUserIdRoute,
 }
 
