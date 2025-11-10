@@ -83,15 +83,18 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
       const anyFilterProvided = langSet.length || diffSet.length || topicSet.length;
       if (anyFilterProvided) {
         const langClause = langSet.length
-          ? Prisma.sql`("languagePref"   && ARRAY[${Prisma.join(langSet)}]::text[])`
-          : Prisma.sql`TRUE`;
+          ? Prisma.sql`"languagePref" && ARRAY[${Prisma.join(langSet)}]::text[]`
+          : Prisma.sql`FALSE`;
+
         const diffClause = diffSet.length
-          ? Prisma.sql`("difficultyPref" && ARRAY[${Prisma.join(diffSet)}]::text[])`
-          : Prisma.sql`TRUE`;
+          ? Prisma.sql`"difficultyPref" && ARRAY[${Prisma.join(diffSet)}]::text[]`
+          : Prisma.sql`FALSE`;
+
         const topicClause = topicSet.length
-          ? Prisma.sql`("topicPref"      && ARRAY[${Prisma.join(topicSet)}]::text[])`
-          : Prisma.sql`TRUE`;
-        filters.push(Prisma.sql`(${langClause} OR ${diffClause} OR ${topicClause})`);
+          ? Prisma.sql`"topicPref" && ARRAY[${Prisma.join(topicSet)}]::text[]`
+          : Prisma.sql`FALSE`;
+
+        filters.push(Prisma.sql`${langClause} AND ${diffClause} AND ${topicClause}`);
       }
 
       const whereSql = Prisma.sql`WHERE ${Prisma.join(filters, " AND ")}`;
@@ -114,11 +117,10 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
       `);
 
       const partner =
-        candidates.find(
-          (c) =>
-            hasOverlap(langSet, c.languagePref) ||
-            hasOverlap(diffSet, c.difficultyPref) ||
-            hasOverlap(topicSet, c.topicPref)
+        candidates.find((c) =>
+          hasOverlap(langSet, c.languagePref) &&
+          hasOverlap(diffSet, c.difficultyPref) &&
+          hasOverlap(topicSet, c.topicPref)
         ) ?? null;
 
       // 4) If we found a partner, write durable record and DELETE both queue tickets
@@ -301,10 +303,13 @@ function sanitizeSet(values?: string | string[]): string[] {
 }
 
 function hasOverlap(a: string[], b?: string[] | null): boolean {
-  const normalizedB = (b ?? []).map(normalize);
-  if (a.length === 0 || normalizedB.length === 0) return true; // wildcard behavior
+  if (!a.length || !b || !b.length) return false;
+
+  const normalizedA = a.map(normalize);
+  const normalizedB = b.map(normalize);
   const bSet = new Set(normalizedB);
-  return a.some((item) => bSet.has(normalize(item)));
+
+  return normalizedA.some((item) => bSet.has(normalize(item)));
 }
 
 export async function getQuestionId(
