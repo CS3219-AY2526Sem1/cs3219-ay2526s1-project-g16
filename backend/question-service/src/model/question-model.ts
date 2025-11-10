@@ -58,12 +58,12 @@ export const getQuestionById = async (id: number) => {
 };
 
 export type ListQuestionsParams = {
-  search?: string; // matches title or statement
-  topicNames?: string[]; // match any of the provided topic names
-  difficulty?: ("Easy" | "Medium" | "Hard") | Array<"Easy" | "Medium" | "Hard">;
+  search?: string;
+  topicNames?: string[];
+  difficulty?: "Easy" | "Medium" | "Hard" | Array<"Easy" | "Medium" | "Hard">;
   orderBy?: "newest" | "oldest" | "title";
   skip?: number;
-  take?: number; // limit
+  take?: number;
 };
 
 export const listQuestions = async (params: ListQuestionsParams = {}) => {
@@ -73,7 +73,7 @@ export const listQuestions = async (params: ListQuestionsParams = {}) => {
     difficulty,
     orderBy = "newest",
     skip = 0,
-    take = 25,
+    take,
   } = params;
 
   const where: Prisma.QuestionWhereInput = {
@@ -108,24 +108,23 @@ export const listQuestions = async (params: ListQuestionsParams = {}) => {
   };
 
   const orderByClause: Prisma.QuestionOrderByWithRelationInput =
-    orderBy === "oldest"
-      ? { createdAt: "asc" }
-      : orderBy === "title"
-        ? { title: "asc" }
-        : { createdAt: "desc" };
+    orderBy === "title"
+      ? { title: "asc" }
+      : {
+          createdAt: orderBy === "oldest" ? "asc" : "desc",
+        };
 
-  const [items, total] = await prisma.$transaction([
-    prisma.question.findMany({
-      where,
-      orderBy: orderByClause,
-      skip,
-      take,
-      include: { topics: { include: { topic: true } } },
-    }),
-    prisma.question.count({ where }),
-  ]);
+  const query: Prisma.QuestionFindManyArgs = {
+    where,
+    orderBy: orderByClause,
+  };
 
-  return { items, total, skip, take };
+  if (typeof take === "number") {
+    query.skip = skip ?? 0;
+    query.take = take;
+  }
+
+  return prisma.question.findMany(query);
 };
 
 export type UpdateQuestionInput = {

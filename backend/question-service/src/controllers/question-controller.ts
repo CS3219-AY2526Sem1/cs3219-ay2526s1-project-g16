@@ -30,13 +30,13 @@ const updateSchema = z.object({
   title: z.string().min(1).optional(),
   statement: z.string().min(1).optional(),
   difficulty: Difficulty.optional(),
-  topicNames: z.array(z.string().min(1)).optional(), // replaces all if present
+  topicNames: z.array(z.string().min(1)).optional(),
   exampleIO: z
     .array(z.object({ input: z.string(), output: z.string() }))
     .optional(),
   constraints: z.array(z.string()).optional(),
   solutionOutline: z.string().min(1).optional(),
-  metadata: z.any().nullable().optional(), // null clears
+  metadata: z.any().nullable().optional(),
 });
 
 export const createQuestionHandler = async (req: Request, res: Response) => {
@@ -56,6 +56,7 @@ export const getQuestionHandler = async (req: Request, res: Response) => {
 
 export const listQuestionsHandler = async (req: Request, res: Response) => {
   const q = req.query as Record<string, string | undefined>;
+  const isAll = q.take === "all";
 
   const parsed: ListQuestionsParams = {
     ...(q.id ? { id: Number(q.id) } : {}),
@@ -80,9 +81,8 @@ export const listQuestionsHandler = async (req: Request, res: Response) => {
     ...(q.orderBy
       ? { orderBy: q.orderBy as "newest" | "oldest" | "title" }
       : {}),
-    // non-optional numerics are fine to always include
     skip: Number(q.skip ?? "0"),
-    take: Number(q.take ?? "25"),
+    ...(isAll ? {} : { take: Number(q.take ?? "25") }),
   };
 
   const result = await listQuestions(parsed);
@@ -93,7 +93,6 @@ export const updateQuestionHandler = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid id" });
 
-  // Zod parse allows missing fields; remove any undefined keys after parsing
   const raw = updateSchema.parse(req.body);
 
   const patch = Object.fromEntries(
