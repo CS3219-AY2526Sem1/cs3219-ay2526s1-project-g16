@@ -152,6 +152,7 @@ function RouteComponent() {
                 to={`/user/$userId`}
                 params={{ userId: attempt.collaboratorId }}
                 className="hover:underline"
+                onClick={(e) => e.stopPropagation()}
               >
                 {attempt.collaborator}
               </Link>
