@@ -287,11 +287,6 @@ function CollaborationSpace() {
       const ytext = ydoc.getText("code");
       const meta = ydoc.getMap("meta");
 
-      if (ytext.length === 0) {
-        // Seed
-        ytext.insert(0, getTemplateFor(monacoLang));
-      }
-
       provider.on("status", (e: any) =>
         setStatus(`status: ${e.status} to room ${roomId}`),
       );
