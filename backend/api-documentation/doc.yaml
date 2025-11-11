@@ -1,6 +1,10 @@
+#AI Assistance Disclosure:
+#Tool: ChatGPT (model: GPT‑5), date: 2025‑11‑11
+#Scope: Generated API documentation in OpenAPI 3.0 format
+#Author review: I validated correctness, edited for types and example data.
+
 openapi: 3.0.0
 servers:
-  # Added by API Auto Mocking Plugin
   - description: PeerPrep API
     url: https://localhost:8080
 info:
@@ -36,7 +40,7 @@ components:
     ExampleIO:
       type: object
       properties:
-        input: { type: string, example: "2 3" }
+        input: { type: string, example: "[2, 3]" }
         output: { type: string, example: "5" }
 
     Question:
