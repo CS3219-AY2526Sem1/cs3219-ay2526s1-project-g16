@@ -101,7 +101,7 @@ function RouteComponent() {
   const attempts = questions.map(({ data }) => data).filter((x) => !!x);
 
   return (
-    <main className="mx-100 my-16 flex flex-col gap-6">
+    <main className="w-140 mx-auto my-16 flex flex-col gap-6">
       <h1 className="text-3xl font-medium">
         {userQuery.data?.username ?? user?.username}
       </h1>
