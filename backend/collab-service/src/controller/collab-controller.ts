@@ -110,7 +110,7 @@ export async function createSession(req: Request, res: Response) {
       try {
         const user1Name = (await fetchUsernameById(user1ID)) ?? "";
         await _joinSession(session.id, { id: user1ID, username: user1Name });
-        await triggerSignal(user1ID, session.id);
+        // await triggerSignal(user1ID, session.id);
       } 
       
       catch (e: any) {
@@ -131,7 +131,7 @@ export async function createSession(req: Request, res: Response) {
       try {
         const user2Name = (await fetchUsernameById(user2ID)) ?? "";
         await _joinSession(session.id, { id: user2ID, username: user2Name });
-        await triggerSignal(user2ID, session.id);
+        // await triggerSignal(user2ID, session.id);
       } catch (e: any) {
         if (e?.code === "P2002") {
           const existing = await findMyActiveSession(user2ID);
