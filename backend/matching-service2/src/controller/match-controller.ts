@@ -17,7 +17,7 @@ type TicketInput = z.infer<typeof ticketSchema>;
 
 export async function requestMatch(req: Request, res: Response) {
   try {
-    // await checkIfUserInMatch(req, res);
+    await checkIfUserInMatch(req, res);
     console.log("User not in match!")
     const body: TicketInput = ticketSchema.parse(req.body);
     console.log(`User is ${body.difficultyIn}`);
