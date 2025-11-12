@@ -55,7 +55,7 @@ function RouteComponent() {
   const attemptsQuery = useQuery<ListAttemptsResponse>({
     queryKey: ["attempts", userId],
     queryFn: async () => {
-      const res = await authFetch(`${ATTEMPT_SERVICE_URL}/${userId}`);
+      const res = await authFetch(`${ATTEMPT_SERVICE_URL}/user/${userId}`);
       if (!res.ok) {
         throw new Error("Attempts response was not ok");
       }
