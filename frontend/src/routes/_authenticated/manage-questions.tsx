@@ -49,10 +49,10 @@ function ManageQuestions() {
 
   // TODO: handle pagination correctly (instead of just data.items)
   return (
-    <main className="mx-64 my-8 flex flex-col gap-6">
+    <main className="w-280 sm:w-180 mx-auto my-8 flex flex-col gap-6">
       <h1 className="text-3xl font-medium">Manage Questions</h1>
 
-      <div className="flex h-150  justify-center rounded-md border">
+      <div className="h-150 flex justify-center rounded-md border">
         {qnsQuery.isPending ||
           (topicsQuery.isPending && (
             <div className="self-center">Loading...</div>
@@ -65,7 +65,7 @@ function ManageQuestions() {
           ))}
         {qnsQuery.isSuccess && topicsQuery.isSuccess && (
           <>
-            <div className="w-1/3 border-r flex flex-col justify-between">
+            <div className="flex w-1/3 flex-col justify-between border-r">
               <div className="overflow-y-auto">
                 <QuestionsTable
                   data={[...qnsQuery.data.items, ...tempNewQuestions]}
@@ -93,7 +93,7 @@ function ManageQuestions() {
                 </Button>
               </div>
             </div>
-            <div className="flex items-center justify-center w-2/3">
+            <div className="flex w-2/3 items-center justify-center">
               {selectedIndex == null ? (
                 <span className="text-neutral-500">No question selected</span>
               ) : (
