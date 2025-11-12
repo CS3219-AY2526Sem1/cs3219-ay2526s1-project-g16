@@ -21,9 +21,7 @@ The system consists of several microservices communicating via REST APIs:
 
 All services are containerized with Docker and deployed on a shared private network.
 
-<img width="1280" height="631" alt="Architecture" src="https://github.com/user-attachments/assets/ddf565e4-1479-43c9-8384-0d442bab317a" />
-
-
+<img width="1237" height="622" alt="Architecture" src="https://github.com/user-attachments/assets/a59926bf-515d-4563-a6a8-3514bd990969" />
 
 ## **Tech Stack**
 - **Frontend:** React, Tanstack, Tailwind, Vite
