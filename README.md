@@ -19,7 +19,8 @@ The system consists of several microservices communicating via REST APIs:
 
 All services are containerized with Docker and deployed on a shared private network.
 
-<img width="1920" height="1080" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/fe287df6-46e1-435b-a7ef-8f2a8780996d" />
+<img width="1280" height="631" alt="Architecture" src="https://github.com/user-attachments/assets/ddf565e4-1479-43c9-8384-0d442bab317a" />
+
 
 
 ## **Tech Stack**
@@ -76,7 +77,7 @@ PORT =
 ACCESS_JWT_SECRET =
 REFRESH_JWE_SECRET =
 ```
-## Services and Ports
+## **Services and Ports**
 
 | Service | Port (Internal) | Description |
 |----------|-----------------|--------------|
@@ -85,11 +86,11 @@ REFRESH_JWE_SECRET =
 | **Matching Service** | 3001 | Redis-based matchmaking between users |
 | **Question Service** | 3002 | Handles coding questions and topics |
 | **Attempt Service** | 3003 | Stores and retrieves user code attempts |
-| **Code Runner Service** | 3005 | Relational data store |
-| **Collab Service** | 3009 | Manages real-time collaborative sessions |
+| **Code Runner Service** | 3005 | Executes user code |
+| **Collab Service** | 3010 | Manages real-time collaborative sessions |
 | **Redis Cache** | 6379 | In-memory queue and message broker |
 
-##**AI Usage Declaration**
+## **AI Usage Declaration**
 AI has been used for this project in the following areas:
 - Documentation generation and overall grammar fixing
 - Refactoring code
