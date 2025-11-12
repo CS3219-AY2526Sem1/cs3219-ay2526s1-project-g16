@@ -1,7 +1,7 @@
 import { PrismaClient, SessionStatus } from "../generated/prisma/index.js";
 import * as Y from 'yjs';
 
-export const prisma = new PrismaClient(); // do i need to dup
+export const prisma = new PrismaClient(); 
 
 export const initConnection = async (): Promise<void> => {
   try {
@@ -35,6 +35,7 @@ export async function findActiveSessionByUsername(username: string) {
 // ====== Session ops =====
 const DEFAULT_TTL_MIN = 90;
 
+// Create collab session with two participants
 export const createSession = async (
   roomId: string,
   topic: string,
@@ -57,6 +58,7 @@ export const createSession = async (
   });
 };
 
+// End the collab session 
 export const endSession = async (sessionId: string) => {
   return prisma.$transaction(async (tx) => {
     const ended = await tx.collabSession.update({ where: { id: sessionId }, data: { status: "ENDED" } });
@@ -65,6 +67,7 @@ export const endSession = async (sessionId: string) => {
   });
 };
 
+// Retrieve session 
 export const getSession = async (sessionId: string) => {
   return await prisma.collabSession.findUnique({
     where: { id: sessionId },
@@ -92,14 +95,12 @@ export async function sweepExpiredSessions() {
 
 // ====== DB guards: run once at startup ======
 export async function ensureDbGuards() {
-  // 1 active participant per user across all sessions
   await prisma.$executeRawUnsafe(`
     CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_participant_per_user
     ON collab.participants ("userId")
     WHERE "leftAt" IS NULL
   `);
 
-  // Helpful index for counting active participants per room
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS idx_participants_active_by_session
     ON collab.participants ("sessionId")
@@ -107,17 +108,14 @@ export async function ensureDbGuards() {
   `);
 }
 
-
-// ====== YDoc seeder - not implemented yet; ignore for now =====
+// ====== YDoc seeder =====
 export async function seedDocIfEmpty(sessionId: string, seed: string) {
-  // If already exists, bail
   const existing = await prisma.yDoc.findUnique({ where: { name: sessionId } });
   if (existing) return;
 
-  // Build a Y state with the seed
   const doc = new Y.Doc();
   doc.getText('code').insert(0, seed);
-  const state = Y.encodeStateAsUpdate(doc); // Uint8Array
+  const state = Y.encodeStateAsUpdate(doc); 
 
   await prisma.yDoc.create({
     data: { name: sessionId, data: Buffer.from(state) }
@@ -126,6 +124,7 @@ export async function seedDocIfEmpty(sessionId: string, seed: string) {
 
 // ===== Participant ops =====
 
+// Allows users to join session
 export const joinSession = async (
   sessionId: string,
   user: { id: string; username: string }
@@ -135,7 +134,6 @@ export const joinSession = async (
   });
   if (!session || session.status !== "ACTIVE") return null;
 
-  // Upsert participant (rejoining clears leftAt)
   await prisma.participant.upsert({
     where: { sessionId_userId: { sessionId, userId: user.id } },
     update: { leftAt: null, username: user.username },
@@ -148,6 +146,7 @@ export const joinSession = async (
   });
 }
 
+// Leave session
 export const leaveSession = async (
   sessionId: string,
   userId: string
