@@ -43,6 +43,28 @@ async function fetchUsernameById(userId: string): Promise<string | null> {
   }
 }
 
+function templateFor(lang: "python" | "java"): string {
+  if (lang === "java") {
+    return `// Java
+            import java.io.*;
+            import java.util.*;
+
+            public class Main {
+              public static void main(String[] args){
+                System.out.println("hello");
+              }
+            }`;
+  }
+  // default python
+  return `# Python
+          def solve():
+              # write your solution
+              pass
+
+          if __name__ == "__main__":
+              print("hello")`;
+}
+
 // ====== Endpoints ===== 
 
 // POST /sessions/sweeper/run
@@ -104,6 +126,12 @@ export async function createSession(req: Request, res: Response) {
       expiresAt ? new Date(expiresAt) : undefined,
       lang
     );
+
+    try {
+      await seedDocIfEmpty(session.id, templateFor(lang));
+    } catch (e) {
+      console.error("[seedDocIfEmpty] failed (likely already seeded):", e);
+    }
 
     // Upsert - user1 join
     if (user1ID) {
