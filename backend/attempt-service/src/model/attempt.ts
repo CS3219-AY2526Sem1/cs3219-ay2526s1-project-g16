@@ -19,8 +19,18 @@ export async function addAttempt(
   return newAttempt;
 }
 
+export async function getAttempt(
+  attemptId: string
+): Promise<attempt | null> {
+  const attempt = await prisma.attempt.findUnique({
+    where: { id: attemptId },
+  });
+
+  return attempt;
+}
+
 export async function getAttemptsByUserId(
-  userId: string,
+  userId: string
 ): Promise<attempt[]> {
   const attempts = await prisma.attempt.findMany({
     where: { userId },
