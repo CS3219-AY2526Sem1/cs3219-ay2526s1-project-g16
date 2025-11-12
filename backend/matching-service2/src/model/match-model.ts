@@ -2,7 +2,7 @@ import axios from "axios";
 import { PrismaClient, Prisma } from "../generated/prisma/index.js";
 import { nanoid } from "nanoid";
 import { createClient } from "redis";
-import { publishMatchForUser } from "./match-events.ts"; 
+import { publishMatchForUser } from "./match-events.ts";
 
 //=========================== PRISMA ===========================
 const prisma = new PrismaClient();
@@ -23,7 +23,7 @@ export async function initConnection() {
   }
 }
 
-//=========================== CONSTANT & ENUMS ===========================
+//=========================== CONSTANT ===========================
 const DEFAULT_TTL_MS = 30 * 1000;
 
 export const MATCH_STATUS = {
@@ -35,6 +35,22 @@ export const MATCH_STATUS = {
 
 export type MatchStatus = typeof MATCH_STATUS[keyof typeof MATCH_STATUS];
 
+//=========================== REDIS QUEUE STRUCTURE ===========================
+const MATCH_QUEUE_KEY = "match:queue";
+const MATCH_TICKET_PREFIX = "match:ticket:";
+const MATCH_LOCK_PREFIX = "match:lock:";
+const MATCH_LOCK_TTL_MS = 5000;
+
+type RedisTicket = {
+  userId: string;
+  languagePref: string[];
+  difficultyPref: string[];
+  topicPref: string[];
+  expiresAt: number; // ms epoch
+  createdAt: number; // ms epoch
+};
+
+//=========================== TYPES ===========================
 export type MatchInput = {
   userId: string;
   languageIn?: string | string[] | undefined;
@@ -67,19 +83,6 @@ export type MatchResult =
       expiresAt?: Date;
     };
 
-//=========================== REDIS QUEUE STRUCTURE ===========================
-const MATCH_QUEUE_KEY = "match:queue";
-const MATCH_TICKET_PREFIX = "match:ticket:";
-
-type RedisTicket = {
-  userId: string;
-  languagePref: string[];
-  difficultyPref: string[];
-  topicPref: string[];
-  expiresAt: number;
-  createdAt: number;
-};
-
 //=========================== CORE ===========================
 export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
   const { userId, ttlMs = DEFAULT_TTL_MS, languageIn, difficultyIn, topicIn } = input;
@@ -93,7 +96,6 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
   const expiresAt = new Date(expiresAtMs);
 
   await cleanupExpiredTickets(now);
-
   await removeTicket(userId);
 
   const partnerTicket = await findPartnerForUser({
@@ -117,11 +119,7 @@ export async function enqueueOrMatch(input: MatchInput): Promise<MatchResult> {
       }
     );
 
-    if (
-      !overlap.language.length ||
-      !overlap.difficulty.length ||
-      !overlap.topic.length
-    ) {
+    if (!overlap.language.length || !overlap.difficulty.length || !overlap.topic.length) {
       await saveTicket({
         userId,
         languagePref: langSet,
@@ -279,22 +277,18 @@ async function cleanupExpiredTickets(nowMs: number): Promise<void> {
   if (candidateIds.length === 0) return;
 
   const multiGet = redis.multi();
-  for (const userId of candidateIds) {
-    const key = MATCH_TICKET_PREFIX + userId;
-    multiGet.get(key);
-  }
-
+  for (const userId of candidateIds) multiGet.get(MATCH_TICKET_PREFIX + userId);
   const res = await multiGet.exec();
   if (!res) return;
 
   const replies = res as unknown as (string | null)[];
 
   const multiCleanup = redis.multi();
-
   candidateIds.forEach((userId: string, idx: number) => {
     const val = replies[idx];
 
     if (!val) {
+      // Ticket missing → cleanup queue & any stale ticket key
       multiCleanup.zRem(MATCH_QUEUE_KEY, userId);
       multiCleanup.del(MATCH_TICKET_PREFIX + userId);
       return;
@@ -310,7 +304,23 @@ async function cleanupExpiredTickets(nowMs: number): Promise<void> {
   await multiCleanup.exec();
 }
 
+async function acquireShortLock(userId: string): Promise<boolean> {
+  const ok = await redis.set(MATCH_LOCK_PREFIX + userId, "1", {
+    NX: true,
+    PX: MATCH_LOCK_TTL_MS,
+  });
+  return ok === "OK";
+}
 
+async function releaseShortLock(userId: string): Promise<void> {
+  try {
+    await redis.del(MATCH_LOCK_PREFIX + userId);
+  } catch (_) {
+    // ignore
+  }
+}
+
+//=========================== PARTNER SEARCH===========================
 async function findPartnerForUser(self: {
   userId: string;
   languagePref: string[];
@@ -319,54 +329,77 @@ async function findPartnerForUser(self: {
 }): Promise<RedisTicket | null> {
   const now = Date.now();
 
-  const candidateIds = await redis.zRange(MATCH_QUEUE_KEY, 0, 49);
+  const N = 50;
+  const candidateIds: string[] = await redis.zRange(MATCH_QUEUE_KEY, 0, N - 1);
   if (!candidateIds.length) return null;
 
   for (const candidateUserId of candidateIds) {
     if (candidateUserId === self.userId) continue;
 
-    const key = MATCH_TICKET_PREFIX + candidateUserId;
-    const raw = await redis.get(key);
+    const locked = await acquireShortLock(candidateUserId);
+    if (!locked) continue;
 
-    if (!raw) {
-      await redis.zRem(MATCH_QUEUE_KEY, candidateUserId);
-      continue;
-    }
+    try {
+      const ticketKey = MATCH_TICKET_PREFIX + candidateUserId;
+      const raw = await redis.get(ticketKey);
 
-    const ticket: RedisTicket = JSON.parse(raw);
-
-    if (ticket.expiresAt <= now) {
-      await removeTicket(candidateUserId);
-      continue;
-    }
-
-    const overlap = computePreferenceOverlap(
-      {
-        languagePref: self.languagePref,
-        difficultyPref: self.difficultyPref,
-        topicPref: self.topicPref,
-      },
-      {
-        languagePref: ticket.languagePref,
-        difficultyPref: ticket.difficultyPref,
-        topicPref: ticket.topicPref,
+      if (!raw) {
+        await redis.zRem(MATCH_QUEUE_KEY, candidateUserId);
+        continue;
       }
-    );
 
-    if (
-      overlap.language.length &&
-      overlap.difficulty.length &&
-      overlap.topic.length
-    ) {
-      await removeTicket(candidateUserId);
-      return ticket;
+      const ticket: RedisTicket = JSON.parse(raw);
+
+      if (ticket.expiresAt <= now) {
+        await removeTicket(candidateUserId);
+        continue;
+      }
+
+      const overlap = computePreferenceOverlap(
+        {
+          languagePref: self.languagePref,
+          difficultyPref: self.difficultyPref,
+          topicPref: self.topicPref,
+        },
+        {
+          languagePref: ticket.languagePref,
+          difficultyPref: ticket.difficultyPref,
+          topicPref: ticket.topicPref,
+        }
+      );
+
+      const ok =
+        overlap.language.length && overlap.difficulty.length && overlap.topic.length;
+
+      if (!ok) {
+        continue;
+      }
+
+      const multi = redis.multi();
+      multi.del(ticketKey);
+      multi.zRem(MATCH_QUEUE_KEY, candidateUserId);
+      const results = await multi.exec();
+
+      if (!results) {
+        continue;
+      }
+
+      const delReply = Number(results[0] ?? 0);
+      const zremReply = Number(results[1] ?? 0);
+
+      if (delReply > 0 || zremReply > 0) {
+        return ticket; // success → stop after first claim
+      }
+
+    } finally {
+      await releaseShortLock(candidateUserId);
     }
   }
 
   return null;
 }
 
-//=========================== PRIVATE (unchanged helpers) ===========================
+//=========================== PRIVATE FUNCTIONS===========================
 function getRoomId(): string {
   return `room_${nanoid(16)}`;
 }
@@ -408,12 +441,8 @@ const pickOne = (xs?: readonly string[] | null): string | null => {
 };
 
 function toArray<T>(value?: T | T[]): T[] {
-  if (Array.isArray(value)) {
-    return value;
-  }
-  if (value != null) {
-    return [value];
-  }
+  if (Array.isArray(value)) return value;
+  if (value != null) return [value];
   return [];
 }
 
@@ -435,11 +464,9 @@ function sanitizeSet(values?: string | string[]): string[] {
 
 function hasOverlap(a: string[], b?: string[] | null): boolean {
   if (!a.length || !b || !b.length) return false;
-
   const normalizedA = a.map(normalize);
   const normalizedB = b.map(normalize);
   const bSet = new Set(normalizedB);
-
   return normalizedA.some((item) => bSet.has(normalize(item)));
 }
 
