@@ -1,5 +1,5 @@
 # AI Usage Log Template
-file /ai/usage-log.md.
+file /backend/api-documentation/doc.yaml
 
 # Date/Time:
 2025-11-11 11:00
@@ -14,5 +14,5 @@ The output documentation was nicely formatted. However, some of the schema and e
 - [-] Modified
 - [ ] Rejected
 # Author Notes:
-I added description to the various API endpoints to explain their purpose.
+I added descriptions to the various API endpoints to explain their purpose.
 I added the correct example inputs and outputs for the relevant APIs.
