@@ -285,7 +285,7 @@ function CollaborationSpace() {
       // 2) prepare Yjs document + text
       const ydoc = provider.document as InstanceType<typeof Y.Doc>;
       const ytext = ydoc.getText("code");
-      const meta = ydoc.getMap("meta");
+      ydoc.getMap("meta");
 
       provider.on("status", (e: any) =>
         setStatus(`status: ${e.status} to room ${roomId}`),
@@ -479,27 +479,4 @@ function CollaborationSpace() {
       </div>
     </main>
   );
-}
-
-const templates = {
-  python: `# Python
-def solve():
-    # write your solution
-    pass
-
-if __name__ == "__main__":
-    print("hello")`,
-  java: `// Java
-import java.io.*;
-import java.util.*;
-
-public class Main {
-  public static void main(String[] args){
-    System.out.println("hello");
-  }
-}`,
-} as const;
-
-function getTemplateFor(lang: keyof typeof templates) {
-  return templates[lang] ?? templates.python; // fall back to python
 }
