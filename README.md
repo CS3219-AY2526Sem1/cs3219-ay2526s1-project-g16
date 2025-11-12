@@ -15,7 +15,9 @@ The system consists of several microservices communicating via REST APIs:
 - **Match Service** – Handles matchmaking logic using Redis  
 - **Collaboration Service** – Manages real-time coding sessions  
 - **Attempt Service** – Stores user code attempts and history  
-- **API Gateway** – Single entry point handling routing, JWT auth, and rate limiting  
+- **API Gateway** – Single entry point handling routing, JWT auth, and rate limiting
+- **Code Runner** - Runs user code to return result or error if any.
+
 
 All services are containerized with Docker and deployed on a shared private network.
 
@@ -98,4 +100,5 @@ AI has been used for this project in the following areas:
 - Documentation generation and overall grammar fixing
 - Refactoring code
 - Question generation for populating the database
+
 All AI outputs have been reviewed before use.
