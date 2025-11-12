@@ -46,23 +46,23 @@ async function fetchUsernameById(userId: string): Promise<string | null> {
 function templateFor(lang: "python" | "java"): string {
   if (lang === "java") {
     return `// Java
-            import java.io.*;
-            import java.util.*;
+import java.io.*;
+import java.util.*;
 
-            public class Main {
-              public static void main(String[] args){
-                System.out.println("hello");
-              }
-            }`;
+public class Main {
+  public static void main(String[] args){
+    System.out.println("hello");
+  }
+}`;
   }
   // default python
   return `# Python
-          def solve():
-              # write your solution
-              pass
+def solve():
+    # write your solution
+    pass
 
-          if __name__ == "__main__":
-              print("hello")`;
+if __name__ == "__main__":
+    print("hello")`;
 }
 
 // ====== Endpoints ===== 
