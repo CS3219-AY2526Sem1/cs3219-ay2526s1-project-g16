@@ -8,7 +8,7 @@ const YWS_PORT = Number(process.env.YWS_PORT || 1234);
 const REDIS_URL = process.env.REDIS_URL || '';
 const CACHE_PREFIX = process.env.REDIS_CACHE_PREFIX || 'yws:doc:';
 const DIRTY_SET_KEY = process.env.REDIS_DIRTY_SET_KEY || 'yws:dirty';
-const REDIS_TTL_SECONDS = Number(process.env.REDIS_TTL_SECONDS || 4000);
+const REDIS_TTL_SECONDS = Number(process.env.REDIS_TTL_SECONDS || 3600);
 const DB_FLUSH_INTERVAL_MS = Number(process.env.DB_FLUSH_INTERVAL_MS || 15000);
 
 const keyFor = (name: string) => `${CACHE_PREFIX}${name}`;
@@ -37,7 +37,6 @@ async function main() {
           return new Uint8Array(buf);
         },
 
-        // Persist state frequently to Redis, mark dirty for later DB flush
         store: async ({ documentName, state }) => {
           const buf = Buffer.from(state);
           await redis.setex(keyFor(documentName), REDIS_TTL_SECONDS, buf);
@@ -47,7 +46,7 @@ async function main() {
     ],
   });
 
-  // Periodic DB flush of all dirty docs (writeback)
+  // Write-back flush (15s)
   setInterval(async () => {
     try {
       const names = await redis.smembers(DIRTY_SET_KEY);
@@ -56,7 +55,6 @@ async function main() {
       for (const name of names) {
         const blob = await redis.getBuffer(keyFor(name));
         if (!blob) {
-          // nothing cached anymore; just clear dirty flag
           await redis.srem(DIRTY_SET_KEY, name);
           continue;
         }
@@ -71,7 +69,6 @@ async function main() {
         await redis.srem(DIRTY_SET_KEY, name);
       }
     } catch (e) {
-      // best-effort; next tick will retry
       console.warn('flush error:', (e as Error).message);
     }
   }, DB_FLUSH_INTERVAL_MS);
