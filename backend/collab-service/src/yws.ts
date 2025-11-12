@@ -1,48 +1,86 @@
-// Y-websocket server
-
 import 'dotenv/config';
 import { Server } from '@hocuspocus/server';
-import { Redis as RedisExtension } from '@hocuspocus/extension-redis';
 import { Database } from '@hocuspocus/extension-database';
-import { Redis } from 'ioredis'; 
-import { prisma } from './model/collab-model.ts'; // your existing PrismaClient export
+import { Redis } from 'ioredis';
+import { prisma } from './model/collab-model.ts';
 
 const YWS_PORT = Number(process.env.YWS_PORT || 1234);
 const REDIS_URL = process.env.REDIS_URL || '';
+const CACHE_PREFIX = process.env.REDIS_CACHE_PREFIX || 'yws:doc:';
+const DIRTY_SET_KEY = process.env.REDIS_DIRTY_SET_KEY || 'yws:dirty';
+const REDIS_TTL_SECONDS = Number(process.env.REDIS_TTL_SECONDS || 4000);
+const DB_FLUSH_INTERVAL_MS = Number(process.env.DB_FLUSH_INTERVAL_MS || 15000);
+
+const keyFor = (name: string) => `${CACHE_PREFIX}${name}`;
 
 async function main() {
   const redis = new Redis(REDIS_URL);
 
   const server = new Server({
     port: YWS_PORT,
-    debounce: 2000,     // saves 2 seconds after stop typing
-    maxDebounce: 5000,  // forced saves every 5 seconds
-
+    debounce: 2000,     // write to Redis after 2s idle
+    maxDebounce: 5000,  // or at most every 5s
     extensions: [
-      new RedisExtension({ redis }), // awareness/broadcast via Redis - pub/sub  host: "127.0.0.1", port: 6379
       new Database({
         fetch: async ({ documentName }) => {
-          const row = await prisma.yDoc.findUnique({ where: { name: documentName }});
-          return row ? new Uint8Array(row.data) : null;
+          // 1) try cache
+          const cached = await redis.getBuffer(keyFor(documentName));
+          if (cached && cached.length) return new Uint8Array(cached);
+
+          // 2) fallback to DB
+          const row = await prisma.yDoc.findUnique({ where: { name: documentName } });
+          if (!row) return null;
+
+          const buf = Buffer.from(row.data);
+          // 3) populate cache
+          await redis.setex(keyFor(documentName), REDIS_TTL_SECONDS, buf);
+          return new Uint8Array(buf);
         },
+
+        // Persist state frequently to Redis, mark dirty for later DB flush
         store: async ({ documentName, state }) => {
-          await prisma.yDoc.upsert({
-            where: { name: documentName },
-            update: { data: Buffer.from(state) },
-            create: { name: documentName, data: Buffer.from(state) },
-          });
+          const buf = Buffer.from(state);
+          await redis.setex(keyFor(documentName), REDIS_TTL_SECONDS, buf);
+          await redis.sadd(DIRTY_SET_KEY, documentName);
         },
       }),
     ],
-
-
   });
 
+  // Periodic DB flush of all dirty docs (writeback)
+  setInterval(async () => {
+    try {
+      const names = await redis.smembers(DIRTY_SET_KEY);
+      if (!names.length) return;
+
+      for (const name of names) {
+        const blob = await redis.getBuffer(keyFor(name));
+        if (!blob) {
+          // nothing cached anymore; just clear dirty flag
+          await redis.srem(DIRTY_SET_KEY, name);
+          continue;
+        }
+
+        await prisma.yDoc.upsert({
+          where: { name },
+          update: { data: blob },
+          create: { name, data: blob },
+        });
+
+        // mark clean
+        await redis.srem(DIRTY_SET_KEY, name);
+      }
+    } catch (e) {
+      // best-effort; next tick will retry
+      console.warn('flush error:', (e as Error).message);
+    }
+  }, DB_FLUSH_INTERVAL_MS);
+
   await server.listen();
-  console.log(`[yws] Hocuspocus listening on :${YWS_PORT} | Redis=${REDIS_URL}`);
+  console.log(`[yws] listening :${YWS_PORT} | Redis=${REDIS_URL} | flush=${DB_FLUSH_INTERVAL_MS}ms`);
 }
 
 main().catch((err) => {
-  console.error('Failed to start Yjs server:', err);
+  console.error('Failed to start Yws:', err);
   process.exit(1);
 });
