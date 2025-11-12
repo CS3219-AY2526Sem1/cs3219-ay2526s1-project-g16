@@ -24,6 +24,7 @@ All services are containerized with Docker and deployed on a shared private netw
 
 
 ## **Tech Stack**
+- **Frontend:** React, Tanstack, Tailwind, Vite
 - **Backend:** Node.js, Express.js  
 - **Database:** PostgreSQL (Google Cloud SQL)  
 - **Cache/Queue:** Redis  
