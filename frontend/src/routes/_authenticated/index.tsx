@@ -1,0 +1,425 @@
+import { MultiMatchMeSelect } from "@/components/matchMeSelect";
+import { Button } from "@/components/ui/button";
+import { MATCH_SERVICE_URL, QN_SERVICE_URL } from "@/constants";
+import { authFetch } from "@/lib/utils";
+import {
+  questionDifficulties,
+  type ListLanguagesResponse,
+  type ListQuestionsResponse,
+  type ListTopicsResponse,
+  type MatchResponse,
+  type MatchResult,
+} from "@/types";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_authenticated/")({
+  component: Home,
+});
+
+type MatchState =
+  | { status: "idle" }
+  | { status: "searching"; subscribeUrl: string }
+  | { status: "matched"; roomId: string };
+
+function Home() {
+  const [questionTopics, setQuestionTopics] = useState<string[]>([""]);
+  const [difficultyLevels, setDifficultyLevels] = useState<string[]>([""]);
+  const [languages, setLanguages] = useState<string[]>([""]);
+  const [matchState, setMatchState] = useState<MatchState>({ status: "idle" });
+  const [questionSearch, setQuestionSearch] = useState("");
+
+  const { auth } = Route.useRouteContext();
+  const { user } = auth;
+
+  const navigate = Route.useNavigate();
+
+  const topicsQuery = useQuery<ListTopicsResponse>({
+    queryKey: ["questionTopics"],
+    queryFn: async () => {
+      const res = await authFetch(`${QN_SERVICE_URL}/topics`);
+      if (!res.ok) {
+        throw new Error("Topics response was not ok");
+      }
+      return res.json();
+    },
+  });
+
+  const langsQuery = useQuery<ListLanguagesResponse>({
+    queryKey: ["languages"],
+    queryFn: async () => {
+      const res = await authFetch(`${QN_SERVICE_URL}/languages`);
+      if (!res.ok) {
+        throw new Error("Languages response was not ok");
+      }
+      return res.json();
+    },
+  });
+
+  const questionsQuery = useQuery<ListQuestionsResponse>({
+    queryKey: ["questions"],
+    queryFn: async () => {
+      const res = await authFetch(`${QN_SERVICE_URL}/questions?take=all`);
+      if (!res.ok) {
+        throw new Error("Questions response was not ok");
+      }
+      return res.json();
+    },
+  });
+
+  const findMatchMutation = useMutation({
+    mutationFn: async (): Promise<MatchResponse> => {
+      const res = await authFetch(`${MATCH_SERVICE_URL}/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.id,
+          topicIn: questionTopics.filter((x) => !!x),
+          difficultyIn: difficultyLevels.filter((x) => !!x),
+          languageIn: languages.filter((x) => !!x),
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(
+          (await res.json()).error ??
+            "An error occurred while finding a match.",
+        );
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.status === "matched") {
+        // console.log("Matched! Room ID:", data.roomId);
+        // setSubscribeUrl(null);
+        setMatchState({ status: "matched", roomId: data.roomId });
+      } else {
+        setMatchState({
+          status: "searching",
+          subscribeUrl: `${MATCH_SERVICE_URL}/subscribe/${user?.id}`,
+        });
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const cancelMatchMutation = useMutation({
+    mutationFn: async () => {
+      const res = await authFetch(`${MATCH_SERVICE_URL}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.id,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Cancel match response was not ok");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setMatchState({ status: "idle" });
+    },
+  });
+
+  useEffect(() => {
+    let eventSource: EventSource;
+    if (matchState.status === "searching") {
+      eventSource = new EventSource(matchState.subscribeUrl, {
+        withCredentials: true,
+      });
+      eventSource.addEventListener("TIMEOUT", () => {
+        toast.error("Matching has timed out! Please try again.");
+        setMatchState({ status: "idle" });
+      });
+      eventSource.addEventListener("MATCH_FOUND", (event) => {
+        const { roomId }: Extract<MatchResult, { status: "MATCH_FOUND" }> =
+          JSON.parse(event.data);
+        setMatchState({ status: "matched", roomId });
+      });
+    }
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [matchState]);
+
+  // at most toast once
+  const queryIsError = topicsQuery.isError || langsQuery.isError;
+  if (queryIsError) {
+    toast.error("Failed to load data. Please try again later.", {
+      id: "data-load-error",
+    });
+  }
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (matchState.status === "matched") {
+      timer = setTimeout(() => {
+        navigate({ to: "/collab", search: { roomId: matchState.roomId } });
+      }, 3000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [matchState, navigate]);
+
+  const resolveTopicsForQuestion = (q: any) => {
+    const allTopics = topicsQuery.data?.topics ?? [];
+
+    if (!q?.topics) return "-";
+
+    if (Array.isArray(q.topics) && typeof q.topics[0] === "string") {
+      return q.topics.join(", ");
+    }
+
+    if (Array.isArray(q.topics)) {
+      const names = q.topics
+        .map((t: any) => {
+          if (t?.name) return t.name;
+          if (t?.topic?.name) return t.topic.name;
+          if (t?.topicId) {
+            const match = allTopics.find(
+              (at) => at.id === t.topicId || at.name === t.topicId,
+            );
+            return match?.name ?? null;
+          }
+          return null;
+        })
+        .filter(Boolean);
+      return names.length ? names.join(", ") : "-";
+    }
+
+    return "-";
+  };
+
+  const filteredQuestions = useMemo(() => {
+    const search = questionSearch.trim().toLowerCase();
+    if (!search) {
+      return questionsQuery.data?.items ?? [];
+    }
+
+    return (
+      questionsQuery.data?.items?.filter((q) => {
+        const title = q.title?.toLowerCase?.() ?? "";
+        const difficulty =
+          ("difficulty" in q && q.difficulty
+            ? q.difficulty
+            : ""
+          )?.toLowerCase?.() ?? "";
+        const topics = resolveTopicsForQuestion(q).toLowerCase();
+
+        return (
+          title.includes(search) ||
+          difficulty.includes(search) ||
+          topics.includes(search)
+        );
+      }) ?? []
+    );
+  }, [questionSearch, questionsQuery.data, resolveTopicsForQuestion]);
+
+  const topicChoices = (
+    difficultyLevels.every((d) => !d) // if no difficulty selected, show all topics
+      ? (topicsQuery.data?.topics ?? [])
+      : difficultyLevels
+          .flatMap((difficulty) =>
+            questionsQuery.data?.items.filter(
+              (q) => q.difficulty === difficulty,
+            ),
+          )
+          .flatMap((q) => q?.topics)
+          .filter((t) => !!t)
+          .map((t) => t.topic)
+          .filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i)
+  ).map(({ name }) => ({
+    value: name,
+    label: name,
+  }));
+
+  const difficultyChoices = (
+    questionTopics.every((t) => !t) // if no topic selected, show all difficulties
+      ? questionDifficulties
+      : questionTopics
+          .flatMap((topic) =>
+            questionsQuery.data?.items.filter((q) =>
+              q.topics.some((qt) => qt.topic.name === topic),
+            ),
+          )
+          .filter((q) => !!q)
+          .map((q) => q.difficulty)
+          .filter((v, i, a) => a.indexOf(v) === i)
+  ).map((level) => ({
+    value: level,
+    label: level,
+  }));
+
+  return (
+    <main className="mt-24 flex w-full flex-col items-center justify-center gap-8">
+      {matchState.status === "idle" ? (
+        <h1 className="text-7xl font-semibold">Match Me</h1>
+      ) : matchState.status === "searching" ? (
+        <h1 className="after:animate-ellipsis flex text-7xl font-semibold text-pink-800/70 after:block after:w-0">
+          Searching
+        </h1>
+      ) : (
+        <h1 className="text-7xl font-semibold text-green-700/70">
+          Match Found!
+        </h1>
+      )}
+      {topicsQuery.isPending || langsQuery.isPending ? (
+        <div className="mt-6 flex items-center gap-4 text-2xl text-neutral-700">
+          <Loader2 className="animate-spin" />
+          Loading...
+        </div>
+      ) : (
+        <>
+          {matchState.status !== "matched" ? (
+            <>
+              <div className="mr-4 grid grid-cols-2 gap-x-2 gap-y-2 text-3xl">
+                <span className="text-right">I want to do</span>
+                <MultiMatchMeSelect
+                  placeholder="Question Topics"
+                  choices={topicChoices}
+                  triggerClassName="text-blue-500"
+                  itemClassName="text-blue-900/80 focus:text-blue-500 data-[state=checked]:text-blue-500 [&_svg]:!text-blue-800/50"
+                  items={questionTopics}
+                  setItems={setQuestionTopics}
+                  disabled={queryIsError || matchState.status !== "idle"}
+                />
+
+                <span className="text-right">at difficulty level</span>
+                <MultiMatchMeSelect
+                  placeholder="Difficulty Level"
+                  choices={difficultyChoices}
+                  triggerClassName="text-orange-500"
+                  itemClassName="text-orange-900/80 focus:text-orange-500 data-[state=checked]:text-orange-500 [&_svg]:!text-orange-800/50"
+                  items={difficultyLevels}
+                  setItems={setDifficultyLevels}
+                  disabled={queryIsError || matchState.status !== "idle"}
+                />
+
+                <span className="text-right">using</span>
+                <MultiMatchMeSelect
+                  placeholder="Language"
+                  choices={
+                    langsQuery.data?.languages?.map(({ name }) => ({
+                      value: name,
+                      label: name,
+                    })) ?? []
+                  }
+                  triggerClassName="text-red-500"
+                  itemClassName="text-red-900/80 focus:text-red-500 data-[state=checked]:text-red-500 [&_svg]:!text-red-800/50"
+                  items={languages}
+                  setItems={setLanguages}
+                  disabled={queryIsError || matchState.status !== "idle"}
+                />
+              </div>
+
+              {matchState.status === "idle" ? (
+                <Button
+                  size="lg"
+                  className="bg-teal-600 hover:bg-teal-700"
+                  onClick={() => findMatchMutation.mutate()}
+                  disabled={
+                    questionTopics.filter((x) => !!x).length === 0 ||
+                    difficultyLevels.filter((x) => !!x).length === 0 ||
+                    languages.filter((x) => !!x).length === 0 ||
+                    findMatchMutation.isPending ||
+                    queryIsError
+                  }
+                >
+                  {findMatchMutation.isPending && (
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                  )}
+                  Match Me!
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  className="bg-red-500 hover:bg-red-600"
+                  onClick={() => cancelMatchMutation.mutate()}
+                >
+                  Cancel Matching
+                </Button>
+              )}
+            </>
+          ) : (
+            <div className="my-6 text-3xl">
+              You'll be redirected to your coding room shortly!
+            </div>
+          )}
+
+          <div className="mb-24 mt-10 w-full max-w-5xl">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h2 className="text-left text-2xl font-semibold">Questions</h2>
+              <input
+                value={questionSearch}
+                onChange={(e) => setQuestionSearch(e.target.value)}
+                placeholder="Search questions..."
+                className="w-56 rounded-md border border-neutral-200 px-3 py-1.5 text-sm focus:border-neutral-400 focus:outline-none"
+              />
+            </div>
+            {questionsQuery.isPending ? (
+              <div className="flex items-center gap-2 text-neutral-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading questions...
+              </div>
+            ) : questionsQuery.isError ? (
+              <div className="text-sm text-red-500">
+                Failed to load questions.
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border bg-white">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-neutral-50">
+                    <tr>
+                      <th className="px-4 py-2 font-medium text-neutral-700">
+                        Name
+                      </th>
+                      <th className="px-4 py-2 font-medium text-neutral-700">
+                        Difficulty
+                      </th>
+                      <th className="px-4 py-2 font-medium text-neutral-700">
+                        Topics
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredQuestions.map((q) => (
+                      <tr key={q.id ?? q.title} className="border-t">
+                        <td className="px-4 py-2">{q.title}</td>
+                        <td className="px-4 py-2">
+                          {"difficulty" in q && q.difficulty
+                            ? q.difficulty
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-2">
+                          {resolveTopicsForQuestion(q)}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredQuestions.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className="px-4 py-4 text-center text-neutral-400"
+                        >
+                          No questions match your search.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </main>
+  );
+}

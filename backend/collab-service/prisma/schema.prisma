@@ -1,0 +1,69 @@
+
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["collab","ydocs"] 
+}
+
+model CollabSession {
+  id           String        @id @default(uuid())
+  topic        String
+  difficulty   String        
+  questionId   String?
+  status       SessionStatus @default(ACTIVE)
+  expiresAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  language     CodeLanguage  @default(python)
+
+  participants Participant[]                     
+  
+  @@map("sessions")
+  @@schema("collab")
+}
+
+model Participant {
+  id        String   @id @default(uuid())
+  sessionId String
+  userId    String
+  username  String
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+
+  session   CollabSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId]) 
+  @@map("participants")
+  @@schema("collab")
+}
+
+model YDoc {
+  name       String   @id
+  data       Bytes
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("ydocs")
+  @@schema("ydocs")
+}
+
+
+enum SessionStatus {
+  ACTIVE
+  ENDED
+  TIMED_OUT
+
+  @@schema("collab")
+}
+
+enum CodeLanguage {
+  java
+  python
+
+  @@schema("collab")
+}

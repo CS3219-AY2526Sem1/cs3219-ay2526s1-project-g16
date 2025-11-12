@@ -1,0 +1,1871 @@
+#AI Assistance Disclosure:
+#Tool: ChatGPT (model: GPT‑5), date: 2025‑11‑11
+#Scope: Generated API documentation in OpenAPI 3.0 format
+#Author review: I validated correctness, edited for types and example data.
+
+openapi: 3.0.0
+servers:
+  - description: PeerPrep API
+    url: https://localhost:8080
+info:
+  description: These are the API endpoints for all PeerPrep microservices
+  version: "1.0.0"
+  title: PeerPrep API
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: user-service
+    description: Microservice for user management
+  - name: attempt-service
+    description: Microservice for question attempt management
+  - name: question-service
+    description: Microservice for question management
+  - name: matching-service
+    description: Microservice for matching users
+  - name: collab-service
+    description: Microservice for managing collaborative coding space
+    
+components:
+  securitySchemes:
+    jwtTokensCookieAuth:
+      type: apiKey
+      in: cookie
+      name: jwt_tokens
+      description: >
+        A single cookie named `jwt_tokens` that contains both the access and refresh tokens
+        in JSON format, for example:
+        `{"jwt_access_token": "<ACCESS_TOKEN>", "jwt_refresh_token": "<REFRESH_TOKEN>"}`.
+  schemas:
+    ExampleIO:
+      type: object
+      properties:
+        input: { type: string, example: "[2, 3]" }
+        output: { type: string, example: "5" }
+
+    Question:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        title: { type: string, example: "Two Sum" }
+        statement: { type: string, example: "Find two numbers that add up to target." }
+        difficulty: { type: string, enum: ["Easy", "Medium", "Hard"], example: "Easy" }
+        topicNames:
+          type: array
+          items: { type: string }
+          example: ["Arrays", "Hash Map"]
+        exampleIO:
+          type: array
+          items: { $ref: "#/components/schemas/ExampleIO" }
+        constraints:
+          type: array
+          items: { type: string }
+          example: ["2 <= nums.length <= 10^4"]
+        solutionOutline:
+          type: string
+          example: "Use a hash map to track complements."
+        metadata:
+          type: object
+          example: { source: "LeetCode", id: 1 }
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-11-01T12:00:00Z"
+
+    CreateQuestionInput:
+      type: object
+      required:
+        - title
+        - statement
+        - difficulty
+        - solutionOutline
+      properties:
+        title: { type: string, example: "Two Sum" }
+        statement: { type: string, example: "Find two numbers that add up to target." }
+        difficulty:
+          type: string
+          enum: ["Easy", "Medium", "Hard"]
+        topicNames:
+          type: array
+          items: { type: string }
+          example: ["Arrays", "Hash Map"]
+        exampleIO:
+          type: array
+          items: { $ref: "#/components/schemas/ExampleIO" }
+        constraints:
+          type: array
+          items: { type: string }
+          example: ["2 <= nums.length <= 10^4"]
+        solutionOutline:
+          type: string
+          example: "Use a hash map."
+        metadata:
+          type: object
+          nullable: true
+          example: { source: "LeetCode", id: 1 }
+
+    UpdateQuestionInput:
+      allOf:
+        - $ref: '#/components/schemas/CreateQuestionInput'
+      description: Partial updates allowed; all fields optional.
+      
+    SessionStatus:
+      type: string
+      description: Status of the session
+      enum:
+        - active
+        - ended
+        - pending
+        - expired
+
+    CollabSession:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        id:
+          type: string
+        topic:
+          type: string
+        difficulty:
+          type: string
+        questionId:
+          type: string
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - status
+        - id
+        - topic
+        - difficulty
+        - createdAt
+        - updatedAt
+      example:
+        status: active
+        id: "abc123"
+        topic: "Graph Algorithms"
+        difficulty: "medium"
+        questionId: "qst567"
+        expiresAt: "2025-11-07T15:00:00Z"
+        createdAt: "2025-11-07T14:00:00Z"
+        updatedAt: "2025-11-07T14:30:00Z"
+
+paths:
+  /user:
+    get:
+      summary: Get current authenticated user
+      description: |
+        Returns the currently authenticated user's information.
+        The user is identified by decoding the JWT access token from the `jwt_access_token` cookie.
+      tags:
+        - user-service
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: Current user information retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "a1b2c3d4e5"
+                  username:
+                    type: string
+                    example: johndoe
+                  email:
+                    type: string
+                    example: johndoe@example.com
+                  isAdmin:
+                    type: boolean
+                    example: false
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: "2025-11-04T15:23:00.000Z"
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    example: "2025-11-04T15:23:00.000Z"
+        '404':
+          description: User not found or token invalid.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: User not found
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal Server Error
+  /user/{id}:
+    get:
+      summary: Get user by ID
+      description: Retrieves a user's profile information by their unique ID. Requires authentication via cookies.
+      tags:
+        - user-service
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The ID of the user to retrieve.
+      responses:
+        '200':
+          description: User found and returned successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "a1b2c3d4e5"
+                  username:
+                    type: string
+                    example: johndoe
+                  email:
+                    type: string
+                    example: johndoe@example.com
+                  isAdmin:
+                    type: boolean
+                    example: false
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: "2025-11-04T15:23:00.000Z"
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    example: "2025-11-04T15:23:00.000Z"
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: User a1b2c3d4e5 not found
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal Server Error
+    patch:
+      summary: Update user account
+      description: |
+        Updates user information (username, email, or password). At least one field must be updated. 
+        Requires the user's current password for verification.  
+        Only the authenticated user can update their own account, authorized via request cookies.
+      tags:
+        - user-service
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The ID of the user to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                currentPassword:
+                  type: string
+                  format: password
+                  example: oldPass123
+                  description: The user's current password (required).
+                newPassword:
+                  type: string
+                  format: password
+                  example: newPass456
+                  description: The new password (min. 3 characters).
+                newEmail:
+                  type: string
+                  format: email
+                  example: newmail@example.com
+                  description: The new email address.
+                newUsername:
+                  type: string
+                  example: newusername
+                  description: The new username.
+      responses:
+        '200':
+          description: User updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "a1b2c3d4e5"
+                  username:
+                    type: string
+                    example: newusername
+                  email:
+                    type: string
+                    example: newmail@example.com
+                  isAdmin:
+                    type: boolean
+                    example: false
+        '400':
+          description: Invalid request or missing fields.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: No fields to update.
+        '401':
+          description: Invalid or incorrect password.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Current password is incorrect.
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: User not found.
+        '409':
+          description: Email or username already in use.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Email is already in use.
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal server error
+  /user/register:
+    post:
+      summary: Register a new user
+      description: Creates a new user account after validating input and ensuring the username and email are unique.
+      tags:
+        - user-service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  example: johndoe
+                  minLength: 3
+                  description: The desired username. Must be at least 3 characters long.
+                email:
+                  type: string
+                  format: email
+                  example: johndoe@example.com
+                  minLength: 3
+                  description: The user's email address.
+                password:
+                  type: string
+                  format: password
+                  example: mySecureP@ssw0rd
+                  minLength: 3
+                  description: The user's password. Must be at least 3 characters long.
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "f1a2b3c4d5"
+                  username:
+                    type: string
+                    example: johndoe
+                  email:
+                    type: string
+                    example: johndoe@example.com
+                  isAdmin:
+                    type: boolean
+                    example: false
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: "2025-11-04T15:23:00.000Z"
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    example: "2025-11-04T15:23:00.000Z"
+        '400':
+          description: Invalid input (missing or too-short fields)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Username must be at least 3 characters long.
+        '409':
+          description: Conflict (duplicate username or email)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Username is already taken.
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal server error
+  /user/login:
+    post:
+      summary: Log in a user
+      description: Authenticates a user with email and password. Returns user info and sets access and refresh tokens in cookies.
+      tags:
+        - user-service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: johndoe@example.com
+                  description: The email address associated with the user account.
+                password:
+                  type: string
+                  format: password
+                  example: mySecureP@ssw0rd
+                  description: The user's password.
+      responses:
+        '200':
+          description: Successfully logged in. Tokens are set as cookies, and user information is returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "a1b2c3d4e5"
+                  username:
+                    type: string
+                    example: johndoe
+                  email:
+                    type: string
+                    example: johndoe@example.com
+                  isAdmin:
+                    type: boolean
+                    example: false
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: "2025-11-04T15:23:00.000Z"
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    example: "2025-11-04T15:23:00.000Z"
+        '400':
+          description: Missing email or password.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Missing email or password.
+        '401':
+          description: Invalid credentials (wrong email or password).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid email address.
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal server error.
+  /user/logout:
+    post:
+      summary: Log out the current user
+      description: |
+        Logs out the currently authenticated user by removing the stored refresh token
+        and clearing authentication cookies (`jwt_access_token` and `jwt_refresh_token`).
+        This endpoint requires that the user is currently logged in.
+      tags:
+        - user-service
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: User successfully logged out. Cookies are cleared.
+          headers:
+            Set-Cookie:
+              description: Cookies cleared (empty `jwt_access_token` and `jwt_refresh_token`).
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User logged out
+        '500':
+          description: Logout failed (invalid or missing refresh token, or internal server error).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Could not logout user. The user's refresh token does not exist.
+  /user/refresh:
+    post:
+      summary: Refresh access token
+      description: |
+        Generates a new access token using a valid refresh token stored in the `jwt_refresh_token` cookie.
+        The new access token is set as an HTTP-only cookie (`jwt_access_token`).
+      tags:
+        - user-service
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: New access token successfully generated.
+          headers:
+            Set-Cookie:
+              description: New access token set as HTTP-only cookie.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Access token refreshed
+        '401':
+          description: Missing or invalid refresh token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Refresh token missing
+        '403':
+          description: Expired or revoked refresh token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid refresh token
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal server error
+
+  /attempt:
+    post:
+      summary: Create a new attempt
+      description: |
+        Creates a new attempt for a given collaboration and question.
+        Requires authentication via the `jwt_access_token` cookie.
+      tags:
+        - attempt-service
+      security:
+        - jwtTokensCookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - collabId
+                - questionId
+                - content
+              properties:
+                collabId:
+                  type: string
+                  example: "d5ed2f3b-942c-4543-a0d3-a6f57f4bf2b4"
+                questionId:
+                  type: number
+                  example: 42
+                content:
+                  type: string
+                  example: "function add(a, b) { return a + b; }"
+      responses:
+        '201':
+          description: Attempt created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Attempt created
+        '400':
+          description: Invalid input data.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid input
+        '401':
+          description: Missing or invalid JWT token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Unauthorized
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal server error
+
+  /attempt/{id}:
+    get:
+      summary: Get attempt by id.
+      description: |
+        Retrieves an attempt associated with the attempt id
+      tags:
+        - attempt-service
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The attempt's unique ID.
+          schema:
+            type: string
+
+      responses:
+        '200':
+          description: Successfully retrieved attempt.
+
+        '400':
+          description: Invalid attempt id.
+
+        '404':
+          description: Unable to find attempt.
+          
+        '500':
+          description: Internal server error.
+
+  /attempt/user/{id}:
+    get:
+      summary: Get attempts by user ID
+      description: |
+        Retrieves all attempts made by a specific user.
+      tags:
+        - attempt-service
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The user's unique ID.
+          schema:
+            type: string
+            example: "d5ed2f3b-942c-4543-a0d3-a6f57f4bf2b4"
+      responses:
+        '200':
+          description: Successfully retrieved attempts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: "456"
+                    userId:
+                      type: string
+                      example: "d06a435b-be8f-4643-a53c-49c9e073aa35"
+                    collabId:
+                      type: string
+                      example: "d5ed2f3b-942c-4543-a0d3-a6f57f4bf2b4"
+                    questionId:
+                      type: number
+                      example: 42
+                    content:
+                      type: string
+                      example: "function add(a, b) { return a + b; }"
+                    createdAt:
+                      type: string
+                      format: date-time
+                      example: "2025-11-04T15:23:00.000Z"
+              example:
+                - id: "456"
+                  userId: "d06a435b-be8f-4643-a53c-49c9e073aa35"
+                  collabId: "d5ed2f3b-942c-4543-a0d3-a6f57f4bf2b4"
+                  questionId: 42
+                  content: "function add(a, b) { return a + b; }"
+                  createdAt: "2025-11-04T15:23:00.000Z"
+                - id: "789"
+                  userId: "d06a435b-be8f-4643-a53c-49c9e073aa35"
+                  collabId: "d5ed2f3b-942c-4543-a0d3-a6f57f4bf2b4"
+                  questionId: 7
+                  content: "def multiply(a, b): return a * b"
+                  createdAt: "2025-11-05T10:10:00.000Z"
+
+        '400':
+          description: Invalid user ID or query parameters.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid userId
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal server error
+
+  /attempt/unique-qns/{id}:
+    get:
+      summary: Get unique question IDs attempted by user
+      description: |
+        Returns a list of unique question IDs that a specific user has attempted.
+      tags:
+        - attempt-service
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The user's unique ID.
+          schema:
+            type: string
+            example: "user123"
+      responses:
+        '200':
+          description: Successfully retrieved unique question IDs.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: number
+                  example: 42
+        '400':
+          description: Invalid user ID.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid userId
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal server error
+
+  /questionBank/questions:
+    get:
+      summary: List questions
+      description: |
+        Retrieves a list of questions with optional filters and pagination.
+      tags: [question-service]
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: search
+          in: query
+          description: Search by question title or statement.
+          schema: { type: string, example: "binary search" }
+        - name: topicNames
+          in: query
+          description: Comma-separated topic names to filter by.
+          schema: { type: string, example: "Arrays,Sorting" }
+        - name: difficulty
+          in: query
+          description: Filter by difficulty (single or comma-separated values).
+          schema: { type: string, example: "Easy,Medium" }
+        - name: orderBy
+          in: query
+          description: Sort order of results.
+          schema:
+            type: string
+            enum: [newest, oldest, title]
+            example: newest
+        - name: skip
+          in: query
+          description: Number of results to skip.
+          schema: { type: integer, example: 0 }
+        - name: take
+          in: query
+          description: Maximum number of results to return.
+          schema: { type: integer, example: 25 }
+      responses:
+        '200':
+          description: Successfully retrieved list of questions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Question'
+              example:
+                - id: 1
+                  title: "Two Sum"
+                  statement: "Find two numbers that add up to target."
+                  difficulty: "Easy"
+                  topicNames: ["Arrays", "Hash Map"]
+                  exampleIO:
+                    - input: "[2,7,11,15], 9"
+                      output: "[0,1]"
+                  constraints: ["2 <= nums.length <= 10^4"]
+                  solutionOutline: "Use a hash map."
+                  createdAt: "2025-11-01T12:00:00Z"
+                - id: 2
+                  title: "Merge Intervals"
+                  statement: "Merge overlapping intervals."
+                  difficulty: "Medium"
+                  topicNames: ["Sorting", "Intervals"]
+                  exampleIO:
+                    - input: "[[1,3],[2,6],[8,10]]"
+                      output: "[[1,6],[8,10]]"
+                  constraints: ["0 <= intervals.length <= 10^4"]
+                  solutionOutline: "Sort and merge adjacent overlaps."
+                  createdAt: "2025-11-02T10:00:00Z"
+        '500':
+          description: Internal server error.
+
+    post:
+      summary: Create a new question
+      description: Create a new question with metadata, examples, and topics.
+      tags: [question-service]
+      security:
+        - jwtTokensCookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuestionInput'
+      responses:
+        '201':
+          description: Question created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+        '400':
+          description: Invalid input data.
+        '500':
+          description: Internal server error.
+
+  /questionBank/questions/{id}:
+    get:
+      summary: Get question by ID
+      description: Retrieve a specific question by its numeric ID.
+      tags: [question-service]
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      responses:
+        '200':
+          description: Successfully retrieved question.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+        '400':
+          description: Invalid question ID.
+        '404':
+          description: Question not found.
+        '500':
+          description: Internal server error.
+
+    patch:
+      summary: Update question (soft delete supported)
+      description: |
+        Updates fields of an existing question.
+        If the question is marked as deleted, this performs a soft delete.
+      tags: [question-service]
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQuestionInput'
+      responses:
+        '200':
+          description: Question updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+        '400':
+          description: Invalid ID or payload.
+        '404':
+          description: Question not found.
+        '500':
+          description: Internal server error.
+
+    delete:
+      summary: Soft delete a question
+      description: Marks a question as deleted without permanently removing it.
+      tags: [question-service]
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      responses:
+        '204':
+          description: Question soft-deleted successfully (no content).
+        '400':
+          description: Invalid question ID.
+        '500':
+          description: Internal server error.
+
+  /questionBank/questions/hard/{id}:
+    delete:
+      summary: Hard delete a question
+      description: Permanently removes a question from the database.
+      tags: [question-service]
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      responses:
+        '200':
+          description: Question permanently deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Question permanently deleted" }
+                  deleted: { type: boolean, example: true }
+        '400':
+          description: Invalid question ID.
+        '500':
+          description: Internal server error.
+
+  /questionBank/languages:
+    get:
+      summary: List available languages
+      description: Returns all programming languages supported by the platform.
+      tags: [question-service]
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: List of available languages.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 5
+                  languages:
+                    type: array
+                    items: { type: string, example: "Python" }
+                    example: ["Python", "JavaScript", "C++", "Go", "Rust"]
+        '500':
+          description: Failed to retrieve languages.
+
+  /questionBank/topics:
+    get:
+      summary: List all topics
+      description: Returns all coding topics (e.g., Arrays, Graphs, DP).
+      tags: [question-service]
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: List of available topics.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 4
+                  topics:
+                    type: array
+                    items: { type: string }
+                    example: ["Arrays", "Sorting", "Graphs", "Dynamic Programming"]
+        '500':
+          description: Failed to fetch topics.
+
+  /questionBank/topics/hard/{id}:
+    delete:
+      summary: Hard delete a topic
+      description: Permanently removes a topic.
+      tags: [question-service]
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 10 }
+      responses:
+        '200':
+          description: Topic permanently deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Topic permanently deleted"
+                  deleted:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid topic ID.
+        '500':
+          description: Internal server error.
+          
+  /matching/request:
+    post:
+      summary: Request a match
+      description: |
+        Queues the user for a match or immediately returns a matched session if found.
+        Requires user authentication.
+      tags: [matching-service]
+      security:
+        - jwtTokensCookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  example: "user123"
+                languageIn:
+                  oneOf:
+                    - type: string
+                      example: "JavaScript"
+                    - type: array
+                      items:
+                        type: string
+                      example: ["Python", "TypeScript"]
+                difficultyIn:
+                  oneOf:
+                    - type: string
+                      example: "Easy"
+                    - type: array
+                      items:
+                        type: string
+                      example: ["Medium", "Hard"]
+                topicIn:
+                  oneOf:
+                    - type: string
+                      example: "Algorithms"
+                    - type: array
+                      items:
+                        type: string
+                      example: ["Data Structures", "Graphs"]
+                ttlMs:
+                  type: integer
+                  description: Time (ms) before the match request expires.
+                  example: 300000
+      responses:
+        '200':
+          description: User matched successfully.
+          content:
+            application/json:
+              example:
+                status: matched
+                roomId: "room789"
+                topic: "Graphs"
+                difficulty: "Medium"
+                language: "Python"
+                questionId: 42
+                userId: "user123"
+                partnerId: "user456"
+                subscribeUrl: "http://api.example.com/matching/subscribe/user123"
+                session:
+                  id: "room789"
+                  topic: "Graphs"
+                  difficulty: "Medium"
+                  questionId: 42
+                  status: "ACTIVE"
+                  expiresAt: "2025-11-06T12:00:00.000Z"
+                  participants:
+                    - userId: "user123"
+                    - userId: "user456"
+        '202':
+          description: User queued successfully.
+          content:
+            application/json:
+              example:
+                status: queued
+                position: 3
+                subscribeUrl: "http://api.example.com/matching/subscribe/user123"
+        '400':
+          description: Invalid request payload.
+          content:
+            application/json:
+              example:
+                error: "Invalid payload"
+        '409':
+          description: User already in active session.
+          content:
+            application/json:
+              example:
+                error: "User already in an active session"
+                session:
+                  id: "room456"
+                  topic: "Sorting"
+                  status: "ACTIVE"
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              example:
+                error: "Internal error"
+                message: "Database connection failed"
+
+  /matching/status/{userId}:
+    get:
+      summary: Get matchmaking status for a user
+      description: |
+        Returns the current matchmaking status (`QUEUED`, `MATCHED`, `CANCELLED`, or `EXPIRED`) for the given user.
+      tags: [matching-service]
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "user123"
+      responses:
+        '200':
+          description: Match status retrieved successfully.
+          content:
+            application/json:
+              example:
+                userId: "user123"
+                status: "QUEUED"
+                position: 2
+        '400':
+          description: Invalid userId.
+          content:
+            application/json:
+              example:
+                error: "Invalid userId"
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              example:
+                error: "Internal error"
+
+  /matching/cancel:
+    post:
+      summary: Cancel a pending match
+      description: Cancels a matchmaking request for the given user.
+      tags: [matching-service]
+      security:
+        - jwtTokensCookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  example: "user123"
+      responses:
+        '200':
+          description: Match cancelled successfully.
+          content:
+            application/json:
+              example:
+                userId: "user123"
+                status: "CANCELLED"
+        '400':
+          description: Invalid userId.
+          content:
+            application/json:
+              example:
+                error: "Invalid userId"
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              example:
+                error: "Internal error"
+
+  /matching/subscribe/{userId}:
+    get:
+      summary: Subscribe to matchmaking updates via SSE
+      description: |
+        Opens a **Server-Sent Events (SSE)** stream for real-time matchmaking updates.
+        The stream sends the following events:
+          - `heartbeat`: every 15s
+          - `MATCH_FOUND`: when a match is found
+          - `TIMEOUT`: if no match found before `ttlMs` expires
+      tags: [matching-service]
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "user123"
+        - name: ttlMs
+          in: query
+          schema:
+            type: integer
+            example: 30000
+        - name: pollMs
+          in: query
+          schema:
+            type: integer
+            example: 1000
+      responses:
+        '200':
+          description: SSE stream established successfully.
+          content:
+            text/event-stream:
+              example: |
+                event: heartbeat
+                data: {}
+                event: MATCH_FOUND
+                data: {"roomId":"room789","topic":"Graphs","difficulty":"Medium"}
+        '400':
+          description: Invalid userId.
+          content:
+            application/json:
+              example:
+                error: "Invalid userId"
+
+  /matching/signal/{userId}:
+    post:
+      summary: Signal a match found event manually
+      description: |
+        Triggers a match notification for the given user, typically used internally by the system.
+      tags: [matching-service]
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "user123"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roomId:
+                  type: string
+                  example: "room789"
+      responses:
+        '200':
+          description: Signal delivered successfully.
+          content:
+            application/json:
+              example:
+                ok: true
+                delivered: 1
+                userId: "user123"
+                roomId: "room789"
+        '404':
+          description: No active subscribers.
+          content:
+            application/json:
+              example:
+                error: "No live SSE subscribers for userId"
+        '400':
+          description: Invalid userId.
+          content:
+            application/json:
+              example:
+                error: "Invalid userId"
+
+  /collab/healthz:
+    get:
+      summary: Health check
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
+
+  /collab/ws/{roomId}:
+    get:
+      summary: WebSocket upgrade for collaborative session
+      description: Creates a websocket connection to the hocuspocus backend that synchronizes Yjs documents between clients.
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '101':
+          description: WebSocket protocol upgrade successful.
+        '400':
+          description: Missing or invalid roomId.
+        '401':
+          description: Missing or invalid access token.
+        '403':
+          description: Websocket upgrade failed.
+
+  /collab/sessions/active:
+    get:
+      summary: Get current user's active session
+      description: Retrieves a user's currently active session by the `jwt_access_token` in the request cookies.
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: Active session for the user or null
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    oneOf:
+                      - $ref: '#/components/schemas/CollabSession'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Unauthorized access
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Internal error"
+
+  /collab/sessions/active/username:
+    post:
+      summary: Get active session by username (unauthenticated, not secure)
+      description: Retrieves a user's currently active session by his username.
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+              properties:
+                username:
+                  type: string
+                  format: email
+                  example: johndoe
+      responses:
+        '200':
+          description: Active session for the username or null
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    oneOf:
+                      - $ref: '#/components/schemas/CollabSession'
+        '400':
+          description: Bad request (username missing)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Missing username
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Internal error"
+
+  /collab/sessions:
+    post:
+      summary: Create a new session
+      description: Creates a new collab session for 2 users after a successful match.
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                topic:
+                  type: string
+                difficulty:
+                  type: string
+                questionId:
+                  type: string
+                id:
+                  type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+                user1ID:
+                  type: string
+                user2ID:
+                  type: string
+                language:
+                  type: string
+                  enum: [java, python]
+              required:
+                - topic
+                - difficulty
+                - questionId
+                - language
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      fresh:
+                        allOf:
+                          - $ref: '#/components/schemas/CollabSession'
+                          - type: object
+                            properties:
+                              participants:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    username:
+                                      type: string
+                                    id:
+                                      type: string
+                                    sessionId:
+                                      type: string
+                                    userId:
+                                      type: string
+                                    joinedAt:
+                                      type: string
+                                      format: date-time
+                                    leftAt:
+                                      type: string
+                                      format: date-time
+                                      nullable: true
+                            example:
+                              status: active
+                              id: "abc123"
+                              topic: "Graph Algorithms"
+                              difficulty: "medium"
+                              questionId: "qst567"
+                              expiresAt: "2025-11-07T15:00:00Z"
+                              createdAt: "2025-11-07T14:00:00Z"
+                              updatedAt: "2025-11-07T14:30:00Z"
+                              participants:
+                                - username: "alice"
+                                  id: "part1"
+                                  sessionId: "abc123"
+                                  userId: "user1"
+                                  joinedAt: "2025-11-07T14:05:00Z"
+                                  leftAt: null
+                                - username: "bob"
+                                  id: "part2"
+                                  sessionId: "abc123"
+                                  userId: "user2"
+                                  joinedAt: "2025-11-07T14:10:00Z"
+                                  leftAt: null
+        '409':
+          description: User already in an active session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      userId:
+                        type: string
+                      existingSessionId:
+                        type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Internal error"
+
+  /collab/sessions/{id}:
+    get:
+      summary: Get session by ID
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CollabSession'
+        '400':
+          description: Bad request (id missing)
+          content:
+            application/json:
+              example:
+                error: "Missing session id"
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              example:
+                error: "Session not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Internal error"
+
+    post:
+      summary: End session by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: Session ended successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CollabSession'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              example:
+                error: "Missing session id"
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              example:
+                error: "Session not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Internal error"
+
+  /collab/sessions/{id}/join:
+    post:
+      summary: Join a session
+      description: The user to join the session is identified from the `jwt_access_token` in the request cookies.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: Joined session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CollabSession'
+        '400':
+          description: Bad request (id or username missing)
+          content:
+            application/json:
+              example:
+                error: "Missing session"
+        '404':
+          description: Session not found or inactive
+          content:
+            application/json:
+              example:
+                error: "Session not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Internal error"
+
+  /collab/sessions/{id}/leave:
+    post:
+      summary: Leave a session
+      description: The user to leave the session is identified through the `jwt_access_token` in the request cookies.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: Left session successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      left:
+                        type: boolean
+                        example: true
+        '400':
+          description: Bad request (id missing)
+          content:
+            application/json:
+              example:
+                error: "Missing session id"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Internal error"
+
+  /collab/sessions/sweeper/run:
+    post:
+      summary: Run session sweeper to expire old sessions
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '200':
+          description: Sweeper run successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CollabSession'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Internal error"

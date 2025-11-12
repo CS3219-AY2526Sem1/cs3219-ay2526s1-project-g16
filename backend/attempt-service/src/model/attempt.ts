@@ -1,0 +1,60 @@
+import { prisma } from "./prisma-client.ts";
+import type { attempt } from "../generated/prisma/index.js";
+
+export async function addAttempt(
+  userId: string,
+  collabId: string,
+  question: number,
+  code: string,
+): Promise<attempt> {
+  const newAttempt = await prisma.attempt.create({
+    data: {
+      userId,
+      collabId,
+      question,
+      code,
+    },
+  });
+
+  return newAttempt;
+}
+
+export async function getAttempt(
+  attemptId: string
+): Promise<attempt | null> {
+  const attempt = await prisma.attempt.findUnique({
+    where: { id: attemptId },
+  });
+
+  return attempt;
+}
+
+export async function getAttemptsByUserId(
+  userId: string
+): Promise<attempt[]> {
+  const attempts = await prisma.attempt.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" }
+  });
+
+  return attempts;
+}
+
+export async function getUniqueQuestionsByUserId(
+  userId: string,
+): Promise<number[]> {
+  const uniqueQuestions = await prisma.attempt.findMany({
+    where: {
+      userId,
+    },
+    distinct: ["question"],
+    select: {
+      question: true,
+    },
+    orderBy: {
+      question: "asc",
+    },
+  });
+
+  return uniqueQuestions.map((entry) => entry.question);
+}

@@ -1,0 +1,178 @@
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { Eye, EyeClosed } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import z from "zod";
+
+export const Route = createFileRoute("/_unauthenticated/register")({
+  validateSearch: (search) => ({
+    redirect: search?.redirect?.toString(),
+  }),
+  beforeLoad: ({ context, search }) => {
+    if (context.auth.isAuthenticated) {
+      throw redirect({ to: search.redirect ?? "/" });
+    }
+  },
+  component: Register,
+});
+
+function Register() {
+  const { auth } = Route.useRouteContext();
+  const { register, login } = auth;
+  const navigate = Route.useNavigate();
+
+  const registerSchema = z
+    .object({
+      email: z.email("Invalid email address"),
+      username: z
+        .string("Username must be at least 6 characters")
+        .min(6, "Username must be at least 6 characters"),
+      password: z
+        .string("Password must be at least 6 characters")
+        .min(6, "Password must be at least 6 characters"),
+      confirmPassword: z
+        .string("Password must be at least 6 characters")
+        .min(6, "Password must be at least 6 characters"),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: "Passwords do not match",
+      path: ["confirmPassword"],
+    });
+
+  const form = useForm<z.infer<typeof registerSchema>>({
+    resolver: zodResolver(registerSchema),
+  });
+
+  const onSubmit = async (data: z.infer<typeof registerSchema>) => {
+    await register(data.email, data.username, data.password);
+    await login(data.email, data.password);
+    navigate({ to: "/" });
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Form {...form}>
+        <form
+          className="flex w-80 flex-col gap-4"
+          onSubmit={form.handleSubmit(onSubmit)}
+        >
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Address</FormLabel>
+                <FormControl>
+                  <Input placeholder="Email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="username"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Username</FormLabel>
+                <FormControl>
+                  <Input placeholder="Username" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => {
+              const [isReveal, setIsReveal] = useState(false);
+              return (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <div className="relative flex items-center">
+                    <FormControl>
+                      <Input
+                        placeholder="Password"
+                        type={isReveal ? "text" : "password"}
+                        {...field}
+                      />
+                    </FormControl>
+                    <Button
+                      className="absolute right-0 text-neutral-600 hover:bg-transparent"
+                      onClick={() => setIsReveal(!isReveal)}
+                      type="button"
+                      variant="ghost"
+                    >
+                      {isReveal ? <EyeClosed size={20} /> : <Eye size={20} />}
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => {
+              const [isReveal, setIsReveal] = useState(false);
+              return (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <div className="relative flex items-center">
+                    <FormControl>
+                      <Input
+                        placeholder="Password"
+                        type={isReveal ? "text" : "password"}
+                        {...field}
+                      />
+                    </FormControl>
+                    <Button
+                      className="absolute right-0 text-neutral-600 hover:bg-transparent"
+                      onClick={() => setIsReveal(!isReveal)}
+                      type="button"
+                      variant="ghost"
+                    >
+                      {isReveal ? <EyeClosed size={20} /> : <Eye size={20} />}
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+
+          <Button>Register</Button>
+        </form>
+
+        <Separator />
+
+        <span className="self-center">
+          {"Have an account? "}
+          <Link
+            to="/login"
+            className="text-blue-500"
+            search={{ redirect: undefined }} // Redirect to home after login
+          >
+            Login.
+          </Link>
+        </span>
+      </Form>
+    </div>
+  );
+}
