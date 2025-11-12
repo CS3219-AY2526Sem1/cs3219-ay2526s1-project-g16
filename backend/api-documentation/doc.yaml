@@ -1448,6 +1448,23 @@ paths:
                 type: string
                 example: ok
 
+  /collab/ws/{roomId}:
+    get:
+      summary: WebSocket upgrade for collaborative session
+      description: Creates a websocket connection to the hocuspocus backend that synchronizes Yjs documents between clients.
+      tags: [collab-service]
+      security:
+        - jwtTokensCookieAuth: []
+      responses:
+        '101':
+          description: WebSocket protocol upgrade successful.
+        '400':
+          description: Missing or invalid roomId.
+        '401':
+          description: Missing or invalid access token.
+        '403':
+          description: Websocket upgrade failed.
+
   /collab/sessions/active:
     get:
       summary: Get current user's active session
