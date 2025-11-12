@@ -18,7 +18,7 @@ function RouteComponent() {
   const { attemptId } = Route.useParams();
 
   const attemptsQuery = useQuery<ListAttemptsResponse[number]>({
-    queryKey: ["attempts", user?.id, attemptId],
+    queryKey: ["attempts", attemptId],
     queryFn: async () => {
       const res = await authFetch(`${ATTEMPT_SERVICE_URL}/${user?.id}`);
       if (!res.ok) {

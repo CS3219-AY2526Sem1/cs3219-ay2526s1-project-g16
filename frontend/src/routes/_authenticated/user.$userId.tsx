@@ -74,7 +74,7 @@ function RouteComponent() {
   const questions = useQueries<UseQueryOptions<AttemptData>[]>({
     queries: (attemptsQuery.data ?? []).map(
       ({ question, code, collabId, id }) => ({
-        queryKey: ["question", question],
+        queryKey: ["question", id],
         queryFn: async () => {
           const [
             { title, difficulty, id: questionId },
