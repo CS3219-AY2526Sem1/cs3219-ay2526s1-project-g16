@@ -7,9 +7,7 @@ import { sweepExpiredSessions, initConnection, ensureDbGuards } from "./model/co
 import { installCollabWsProxy } from "./ws/collab-ws.ts";
 import cookieParser from "cookie-parser"; 
 
-
 dotenv.config();
-
 const app = express();
 const frontend = process.env.FRONTEND_URL || 'http://localhost:8000';
 app.use(cookieParser());
@@ -19,8 +17,6 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use("/", collabRoutes);
-
-
 
 const httpServer = createServer(app);
 
@@ -32,14 +28,14 @@ initConnection().then(async () => {
       console.log(`Collab HTTP+WS gateway on port 3009 ; upstream y-websocket on 1234`);
     });
 
-    setInterval(async () => { // session sweeper that runs every minute
+    setInterval(async () => { 
       try {
-        const res = await sweepExpiredSessions();
+        const res = await sweepExpiredSessions(); // sweep every minute
         if (res.expired > 0) console.log(`[sweeper] timed out ${res.expired} sessions`);
       } catch (e) {
         console.error("[sweeper] error:", e);
       }
-    }, 6000_0);  
+    }, 60_000);  
   })
   .catch((err) => {
     console.error(err);
