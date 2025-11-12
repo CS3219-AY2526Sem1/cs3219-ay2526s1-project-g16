@@ -50,22 +50,24 @@ Before starting, make sure you have the following installed:
 - **PostgreSQL 14+** and **Redis** – optional, if running services manually
 - **Prisma CLI** – optional, for managing database migrations
 
-### Starting All Services
-From the project’s root directory, run:
-
+### Starting Each Service
+#### Frontend
+Navigate to `<project-dir>/frontend` and run:
 ```bash
-docker compose build
-docker compose up
+docker build -t <container-name> .
+docker run --rm -p <host-port>:<container-port> <container-name>
 ```
+
+#### Backend
+Navigate to `<project-dir>/backend/<microservice-directory>` and run:
+```bash
+docker build -t <container-name> .
+docker run --rm -p <host-port>:<container-port> <container-name>
+```
+
 This will:
-
-- Build all backend service containers
-
-- Start PostgreSQL and Redis
-
-- Launch all core microservices and the API Gateway
-
-- Expose the application at http://localhost:8080
+- Build the service containers
+- Run the service containers
 
 ## **Environment Setup**
 Each microservice loads its own configuration from a `.env` file.
@@ -83,11 +85,11 @@ REFRESH_JWE_SECRET =
 |----------|-----------------|--------------|
 | **API Gateway** | 8080 | Central routing, authentication, and rate limiting |
 | **User Service** | 3000 | Manages users and authentication |
-| **Matching Service** | 3001 | Redis-based matchmaking between users |
+| **Matching Service** | 3010 | Redis-based matchmaking between users |
 | **Question Service** | 3002 | Handles coding questions and topics |
 | **Attempt Service** | 3003 | Stores and retrieves user code attempts |
 | **Code Runner Service** | 3005 | Executes user code |
-| **Collab Service** | 3010 | Manages real-time collaborative sessions |
+| **Collab Service** | 3009 | Manages real-time collaborative sessions |
 | **Redis Cache** | 6379 | In-memory queue and message broker |
 
 ## **AI Usage Declaration**
