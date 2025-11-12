@@ -285,7 +285,7 @@ function CollaborationSpace() {
       // 2) prepare Yjs document + text
       const ydoc = provider.document as InstanceType<typeof Y.Doc>;
       const ytext = ydoc.getText("code");
-      const meta = ydoc.getMap("meta");
+      ydoc.getMap("meta");
 
       provider.on("status", (e: any) =>
         setStatus(`status: ${e.status} to room ${roomId}`),
@@ -316,43 +316,14 @@ function CollaborationSpace() {
       // 5) bind Yjs <-> Monaco
       new MonacoBinding(ytext, model, new Set([editor]), provider.awareness);
 
-      // 6) Seed after initial sync 
-      let seededLocal = false; // avoid local re-entry (reconnects)
-      const trySeed = () => {
-        if (seededLocal) return;
-        seededLocal = true;
-
-        ydoc.transact(() => {
-          const alreadySeeded = Boolean(meta.get("templateSeeded"));
-          const isEmpty       = ytext.length === 0;
-
-          if (!alreadySeeded && isEmpty) {
-            meta.set("templateSeeded", true);
-            meta.set("templateLang", monacoLang);
-            ytext.insert(0, getTemplateFor(monacoLang));
-          }
-        });
-      };
-
-      if ((provider as any).synced === true) {
-        trySeed();
-      } else {
-        const onSynced = (isSynced: boolean) => {
-          if (!isSynced) return;
-          provider.off("synced", onSynced as any);
-          trySeed();
-        };
-        provider.on("synced", onSynced as any);
-      }
-
-      // 7) poll session liveness; if not ACTIVE → make editor readOnly
+      // 6) poll session liveness; if not ACTIVE → make editor readOnly
       const poller = setInterval(async () => {
         try {
           const resp = await authFetch(
             `${HTTP_BASE}/sessions/${encodeURIComponent(roomId)}`,
             { method: "GET" },
           );
-          if (!resp.ok) return; // ignore transient errors
+          if (!resp.ok) return; 
 
           const { data } = (await resp.json()) as {
             data: CollabSession | null;
@@ -508,27 +479,4 @@ function CollaborationSpace() {
       </div>
     </main>
   );
-}
-
-const templates = {
-  python: `# Python
-def solve():
-    # write your solution
-    pass
-
-if __name__ == "__main__":
-    print("hello")`,
-  java: `// Java
-import java.io.*;
-import java.util.*;
-
-public class Main {
-  public static void main(String[] args){
-    System.out.println("hello");
-  }
-}`,
-} as const;
-
-function getTemplateFor(lang: keyof typeof templates) {
-  return templates[lang] ?? templates.python; // fall back to python
 }
