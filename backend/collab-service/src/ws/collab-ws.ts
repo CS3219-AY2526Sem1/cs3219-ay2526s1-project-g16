@@ -23,7 +23,6 @@ function readJwtFromCookie(req: any): string | undefined {
 function verifyAccessToken(token: string) {
   const secret = process.env.ACCESS_JWT_SECRET!;
   const decoded: any = jwt.verify(token, secret);
-
   const id = decoded.sub || decoded.id;
   if (!id) throw new Error("Token missing subject");
 
@@ -65,7 +64,7 @@ async function authorize(roomId: string, user: { id: string; username?: string }
     if (session.status !== "ACTIVE") throw new Error("SESSION_NOT_ACTIVE");
     if (session.expiresAt && session.expiresAt.getTime() < Date.now()) throw new Error("SESSION_EXPIRED");
 
-    // must already be a participant (pre-joined via createSession)
+    // Must already be a participant (pre-joined via createSession)
     const participant = await tx.participant.findUnique({
       where: { sessionId_userId: { sessionId: roomId, userId: user.id } },
       select: { id: true },
@@ -115,7 +114,7 @@ export function installCollabWsProxy(server: HttpServer) {
         const user = verifyAccessToken(token);
         await authorize(roomId, user);
 
-        // Rewrite path so upstream sees "/<roomId>"
+        // Rewrite path for upstream
         (req as any).url = `/${roomId}`;
 
         proxy.ws(req, socket, head);

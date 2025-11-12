@@ -10,7 +10,7 @@ import {
   sweepExpiredSessions,
   seedDocIfEmpty
 } from "../model/collab-model.ts";
-import { decodeAccessToken, triggerSignal } from "./collab-utils.ts";
+import { decodeAccessToken } from "./collab-utils.ts";
 
 const USER_SERVICE_BASE = process.env.USER_SERVICE_URL ?? "http://user:3000"; 
 
@@ -21,7 +21,7 @@ function normalizeLanguage(input: unknown): "java" | "python" {
   return v === "java" ? "java" : "python"; 
 }
 
-// Accepts both Authorisation Header (API to API) AND cookies
+// Accepts both Authorisation Header AND cookies
 function extractAccessToken(req: Request): string | null {
   const h = req.headers.authorization;
   if (typeof h === "string" && h.startsWith("Bearer ")) return h.slice(7);
@@ -111,7 +111,6 @@ export async function getActiveSessionByUsername(req: Request, res: Response) {
 }
 
 // POST /sessions
-// Frontend should retrieve question based on session.questionId after joinSession
 export async function createSession(req: Request, res: Response) {
   try {
     const { topic, difficulty, questionId, id, expiresAt, user1ID, user2ID, language } = req.body; 
