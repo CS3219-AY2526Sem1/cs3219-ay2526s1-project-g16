@@ -48,15 +48,7 @@ export async function getAttemptsByUserId(
       return;
     }
 
-    // Parse pagination query params
-    const page = Number(req.query.page) || 0;
-    const pageSize = Number(req.query.pageSize) || 10;
-
-    const attempts: attempt[] = await _getAttemptsByUserId(
-      userId,
-      page,
-      pageSize,
-    );
+    const attempts: attempt[] = await _getAttemptsByUserId(userId);
 
     res.status(200).json(attempts);
   } catch (error) {
