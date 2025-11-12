@@ -2,7 +2,7 @@ import { CodeEditor } from "@/components/codeEditor";
 import { ATTEMPT_SERVICE_URL } from "@/constants";
 import { setupMonacoEnvironment } from "@/lib/monacoWorkers";
 import { authFetch } from "@/lib/utils";
-import type { ListAttemptsResponse } from "@/types";
+import type { Attempt } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import type { editor } from "monaco-editor";
@@ -13,27 +13,17 @@ export const Route = createFileRoute("/_authenticated/attempt/$attemptId")({
 });
 
 function RouteComponent() {
-  const { auth } = Route.useRouteContext();
-  const { user } = auth;
   const { attemptId } = Route.useParams();
 
-  const attemptsQuery = useQuery<ListAttemptsResponse[number]>({
+  const attemptsQuery = useQuery<Attempt>({
     queryKey: ["attempts", attemptId],
     queryFn: async () => {
-      const res = await authFetch(`${ATTEMPT_SERVICE_URL}/${user?.id}`);
+      const res = await authFetch(`${ATTEMPT_SERVICE_URL}/${attemptId}`);
       if (!res.ok) {
         throw new Error("Attempts response was not ok");
       }
-      const attempts: ListAttemptsResponse = await res.json();
-      const attempt = attempts.find((a) => a.id === attemptId);
-
-      if (!attempt) {
-        throw new Error("Attempt not found");
-      }
-
-      return attempt;
+      return await res.json();
     },
-    enabled: !!user?.id && !!attemptId,
   });
 
   const containerRef = useRef<HTMLDivElement | null>(null); // editor DOM
