@@ -5,6 +5,7 @@ import {
   addAttempt as _addAttempt,
   getAttemptsByUserId as _getAttemptsByUserId,
   getUniqueQuestionsByUserId as _getUniqueQuestionsByUserId,
+  getAttempt as _getAttempt,
 } from "../model/attempt.ts";
 
 const ACCESS_SECRET = process.env.ACCESS_JWT_SECRET || "access-secret";
@@ -33,6 +34,31 @@ export async function addAttempt(req: Request, res: Response): Promise<void> {
   } catch (error) {
     res.status(500).json({ error: "Internal server error: " + error });
     return;
+  }
+}
+
+export async function getAttempt(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const attemptId = req.params.id;
+
+    if (typeof attemptId !== "string") {
+      res.status(400).json({ error: "Invalid attempt id" });
+      return;
+    }
+
+    const attempt: attempt | null = await _getAttempt(attemptId);
+
+    if (!attempt) {
+      res.status(404).json({ error: "Attempt not found" });
+      return;
+    }
+
+    res.status(200).json(attempt);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" + error });
   }
 }
 
