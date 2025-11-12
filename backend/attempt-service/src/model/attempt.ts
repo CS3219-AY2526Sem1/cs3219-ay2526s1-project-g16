@@ -21,14 +21,10 @@ export async function addAttempt(
 
 export async function getAttemptsByUserId(
   userId: string,
-  page: number = 0, // 1-based page number
-  pageSize: number = 10, // records per page
 ): Promise<attempt[]> {
   const attempts = await prisma.attempt.findMany({
     where: { userId },
-    orderBy: { createdAt: "desc" },
-    skip: page * pageSize,
-    take: pageSize,
+    orderBy: { createdAt: "desc" }
   });
 
   return attempts;
